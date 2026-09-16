@@ -1,0 +1,4507 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Dispatch — Operations Center</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link
+    href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600;700&display=swap"
+    rel="stylesheet">
+  <style>
+    :root {
+      /* ---- Core palette (ink / navy control-room, warm beacon amber, transit teal) ---- */
+      --ink: #0B0F17;
+      --ink-raised: #10151F;
+      --panel: #121826;
+      --panel-raised: #1A2232;
+      --panel-hover: #202A3D;
+      --border: #232E42;
+      --border-strong: #303F5A;
+      --text-primary: #EEF1F6;
+      --text-secondary: #93A0B8;
+      --text-tertiary: #5C6A85;
+
+      --amber: #E3A13D;
+      --amber-dim: rgba(227, 161, 61, 0.14);
+      --teal: #3FB6AE;
+      --teal-dim: rgba(63, 182, 174, 0.14);
+      --blue: #5B7FD6;
+      --blue-dim: rgba(91, 127, 214, 0.14);
+      --good: #49AE7D;
+      --good-dim: rgba(73, 174, 125, 0.14);
+      --bad: #DD5B5F;
+      --bad-dim: rgba(221, 91, 95, 0.14);
+      --neutral: #5C6A85;
+      --neutral-dim: rgba(92, 106, 133, 0.14);
+
+      --radius-panel: 12px;
+      --radius-card: 8px;
+      --radius-pill: 999px;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    html,
+    body {
+      margin: 0;
+      padding: 0;
+      height: 100%;
+      background: var(--ink);
+      color: var(--text-primary);
+      font-family: 'IBM Plex Sans', ui-sans-serif, system-ui, sans-serif;
+      -webkit-font-smoothing: antialiased;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .mono {
+      font-family: 'IBM Plex Mono', ui-monospace, monospace;
+    }
+
+    a {
+      color: inherit;
+      text-decoration: none;
+    }
+
+    button {
+      font-family: inherit;
+      cursor: pointer;
+    }
+
+    ::-webkit-scrollbar {
+      width: 8px;
+      height: 8px;
+    }
+
+    ::-webkit-scrollbar-thumb {
+      background: var(--border-strong);
+      border-radius: 8px;
+    }
+
+    ::-webkit-scrollbar-track {
+      background: transparent;
+    }
+
+    svg {
+      display: block;
+    }
+
+    .icon {
+      width: 18px;
+      height: 18px;
+      stroke: currentColor;
+      stroke-width: 1.6;
+      fill: none;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+      flex-shrink: 0;
+    }
+
+    /* ================= APP SHELL ================= */
+    .app {
+      display: grid;
+      grid-template-columns: 72px 1fr;
+      height: 100vh;
+      min-height: 640px;
+    }
+
+    /* ---------------- RAIL NAV ---------------- */
+    .rail {
+      background: var(--ink-raised);
+      border-right: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 16px 0 12px;
+    }
+
+    .rail-mark {
+      width: 36px;
+      height: 36px;
+      border-radius: 9px;
+      background: var(--amber);
+      color: var(--ink);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 700;
+      font-size: 15px;
+      font-family: 'IBM Plex Mono', monospace;
+      margin-bottom: 28px;
+    }
+
+    .rail-nav {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      flex: 1;
+      align-items: center;
+    }
+
+    .rail-btn {
+      width: 44px;
+      height: 44px;
+      border-radius: var(--radius-card);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: transparent;
+      border: none;
+      color: var(--text-tertiary);
+      position: relative;
+    }
+
+    .rail-btn:hover {
+      background: var(--panel-hover);
+      color: var(--text-secondary);
+    }
+
+    .rail-btn.active {
+      background: var(--amber-dim);
+      color: var(--amber);
+    }
+
+    .rail-btn.active::before {
+      content: '';
+      position: absolute;
+      left: -12px;
+      top: 10px;
+      bottom: 10px;
+      width: 3px;
+      background: var(--amber);
+      border-radius: 2px;
+    }
+
+    .rail-foot {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      align-items: center;
+    }
+
+    .rail-avatar {
+      width: 34px;
+      height: 34px;
+      border-radius: var(--radius-pill);
+      background: var(--panel-raised);
+      border: 1px solid var(--border-strong);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--text-secondary);
+      font-family: 'IBM Plex Mono', monospace;
+    }
+
+    /* ---------------- MAIN COLUMN ---------------- */
+    .main {
+      display: flex;
+      flex-direction: column;
+      min-width: 0;
+      height: 100vh;
+      overflow: hidden;
+    }
+
+    /* ---- topbar ---- */
+    .topbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 16px 24px;
+      border-bottom: 1px solid var(--border);
+      background: var(--ink);
+      flex-shrink: 0;
+    }
+
+    .topbar-left {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+    }
+
+    .topbar-title {
+      font-size: 18px;
+      font-weight: 600;
+      letter-spacing: -0.01em;
+    }
+
+    .live-chip {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 5px 10px 5px 8px;
+      border-radius: var(--radius-pill);
+      background: var(--panel-raised);
+      border: 1px solid var(--border);
+      font-size: 12px;
+      color: var(--text-secondary);
+      font-family: 'IBM Plex Mono', monospace;
+    }
+
+    .live-dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: var(--good);
+      box-shadow: 0 0 0 0 rgba(73, 174, 125, 0.5);
+      animation: livePulse 2.2s infinite;
+    }
+
+    @keyframes livePulse {
+      0% {
+        box-shadow: 0 0 0 0 rgba(73, 174, 125, 0.55);
+      }
+
+      70% {
+        box-shadow: 0 0 0 6px rgba(73, 174, 125, 0);
+      }
+
+      100% {
+        box-shadow: 0 0 0 0 rgba(73, 174, 125, 0);
+      }
+    }
+
+    .topbar-right {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .search-box {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-card);
+      padding: 8px 12px;
+      width: 220px;
+      color: var(--text-tertiary);
+    }
+
+    .search-box input {
+      border: none;
+      background: transparent;
+      outline: none;
+      color: var(--text-primary);
+      font-size: 13px;
+      width: 100%;
+      font-family: inherit;
+    }
+
+    .search-box input::placeholder {
+      color: var(--text-tertiary);
+    }
+
+    .icon-btn {
+      width: 36px;
+      height: 36px;
+      border-radius: var(--radius-card);
+      background: var(--panel);
+      border: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--text-secondary);
+      position: relative;
+    }
+
+    .icon-btn:hover {
+      background: var(--panel-hover);
+    }
+
+    .badge-dot {
+      position: absolute;
+      top: 6px;
+      right: 6px;
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: var(--bad);
+      border: 1.5px solid var(--ink);
+    }
+
+    .user-chip {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 4px 10px 4px 4px;
+      border-radius: var(--radius-pill);
+      border: 1px solid var(--border);
+      background: var(--panel);
+    }
+
+    .user-chip .rail-avatar {
+      width: 26px;
+      height: 26px;
+      font-size: 11px;
+    }
+
+    .user-chip .u-name {
+      font-size: 12.5px;
+      font-weight: 500;
+    }
+
+    .user-chip .u-role {
+      font-size: 10.5px;
+      color: var(--text-tertiary);
+    }
+
+    /* ---- scroll area ---- */
+    .scroll-area {
+      flex: 1;
+      overflow-y: auto;
+      padding: 20px 24px 24px;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    /* ---- KPI row ---- */
+    .kpi-row {
+      display: grid;
+      grid-template-columns: repeat(5, 1fr);
+      gap: 12px;
+    }
+
+    .kpi-card {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-panel);
+      padding: 14px 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      min-width: 0;
+    }
+
+    .kpi-card .kpi-top {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .kpi-label {
+      font-size: 12px;
+      color: var(--text-secondary);
+      font-weight: 500;
+    }
+
+    .kpi-swatch {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+    }
+
+    .kpi-value {
+      font-size: 28px;
+      font-weight: 600;
+      font-family: 'IBM Plex Mono', monospace;
+      letter-spacing: -0.01em;
+    }
+
+    .kpi-sub {
+      font-size: 11.5px;
+      color: var(--text-tertiary);
+    }
+
+    .kpi-card.warn {
+      border-color: rgba(221, 91, 95, 0.4);
+      background: linear-gradient(180deg, rgba(221, 91, 95, 0.07), transparent 60%);
+    }
+
+    .kpi-card.warn .kpi-value {
+      color: var(--bad);
+    }
+
+    .kpi-card {
+      cursor: pointer;
+      transition: box-shadow .15s ease;
+    }
+
+    .kpi-card:hover {
+      background: var(--panel-hover);
+    }
+
+    .kpi-card.filter-active {
+      box-shadow: inset 0 0 0 1.5px var(--amber);
+    }
+
+    /* ---- content grid: map + list ---- */
+    .content-grid {
+      display: grid;
+      grid-template-columns: 1.7fr 1fr;
+      gap: 12px;
+      min-height: 420px;
+      flex: 1;
+    }
+
+    .panel {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-panel);
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    .panel-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 14px 16px 10px;
+      flex-shrink: 0;
+    }
+
+    .panel-title {
+      font-size: 13.5px;
+      font-weight: 600;
+    }
+
+    .panel-title .count {
+      color: var(--text-tertiary);
+      font-weight: 500;
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 12px;
+      margin-left: 6px;
+    }
+
+    /* ---- map panel ---- */
+    .map-panel {
+      position: relative;
+    }
+
+    .map-chip-row {
+      display: flex;
+      gap: 6px;
+    }
+
+    .chip {
+      font-size: 11.5px;
+      padding: 5px 10px;
+      border-radius: var(--radius-pill);
+      background: transparent;
+      border: 1px solid var(--border);
+      color: var(--text-secondary);
+    }
+
+    .chip.on {
+      background: var(--amber-dim);
+      border-color: rgba(227, 161, 61, 0.4);
+      color: var(--amber);
+    }
+
+    .map-wrap {
+      position: relative;
+      flex: 1;
+      margin: 0 12px 12px;
+      border-radius: 8px;
+      overflow: hidden;
+      background: #0F1720;
+      border: 1px solid var(--border);
+    }
+
+    .map-wrap svg {
+      width: 100%;
+      height: 100%;
+      display: block;
+    }
+
+    .map-legend {
+      position: absolute;
+      bottom: 12px;
+      left: 12px;
+      background: rgba(18, 24, 38, 0.88);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-card);
+      padding: 10px 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      backdrop-filter: blur(2px);
+    }
+
+    .legend-row {
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      font-size: 11px;
+      color: var(--text-secondary);
+    }
+
+    .legend-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
+
+    .map-zoom {
+      position: absolute;
+      top: 12px;
+      right: 12px;
+      display: flex;
+      flex-direction: column;
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-card);
+      overflow: hidden;
+    }
+
+    .map-zoom button {
+      width: 30px;
+      height: 30px;
+      background: transparent;
+      border: none;
+      color: var(--text-secondary);
+      font-size: 15px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .map-zoom button:last-child {
+      border-bottom: none;
+    }
+
+    .map-zoom button:hover {
+      background: var(--panel-hover);
+    }
+
+    /* marker styles */
+    .marker-pulse {
+      animation: markerPulse 1.8s infinite;
+    }
+
+    @keyframes markerPulse {
+      0% {
+        opacity: 0.55;
+        r: 11;
+      }
+
+      70% {
+        opacity: 0;
+        r: 20;
+      }
+
+      100% {
+        opacity: 0;
+        r: 20;
+      }
+    }
+
+    .route-line {
+      transition: opacity .25s ease, stroke-width .25s ease;
+    }
+
+    .marker-group {
+      transition: opacity .25s ease;
+      cursor: pointer;
+    }
+
+    .map-dim {
+      opacity: 0.32;
+    }
+
+    .map-label {
+      fill: var(--text-tertiary);
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 10px;
+      letter-spacing: 1.5px;
+    }
+
+    .map-viewport {
+      transition: transform .45s cubic-bezier(.2, .8, .2, 1);
+    }
+
+    .map-zoom button.disabled {
+      opacity: 0.3;
+      pointer-events: none;
+    }
+
+    /* ---- list panel ---- */
+    .tab-row {
+      display: flex;
+      gap: 4px;
+      padding: 0 12px;
+      border-bottom: 1px solid var(--border);
+      flex-shrink: 0;
+    }
+
+    .tab-btn {
+      background: transparent;
+      border: none;
+      padding: 10px 12px;
+      font-size: 12.5px;
+      font-weight: 500;
+      color: var(--text-tertiary);
+      border-bottom: 2px solid transparent;
+      margin-bottom: -1px;
+    }
+
+    .tab-btn.active {
+      color: var(--text-primary);
+      border-color: var(--amber);
+    }
+
+    .tab-btn .pill-count {
+      background: var(--panel-raised);
+      color: var(--text-secondary);
+      border-radius: var(--radius-pill);
+      padding: 1px 6px;
+      font-size: 10.5px;
+      margin-left: 6px;
+      font-family: 'IBM Plex Mono', monospace;
+    }
+
+    .list-scroll {
+      flex: 1;
+      overflow-y: auto;
+    }
+
+    .delivery-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 10px 14px;
+      border-bottom: 1px solid var(--border);
+      cursor: pointer;
+      position: relative;
+    }
+
+    .delivery-row:hover {
+      background: var(--panel-hover);
+    }
+
+    .delivery-row.selected {
+      background: var(--panel-hover);
+    }
+
+    .delivery-row.selected::before {
+      content: '';
+      position: absolute;
+      left: 0;
+      top: 0;
+      bottom: 0;
+      width: 3px;
+      background: var(--amber);
+    }
+
+    .d-main {
+      flex: 1;
+      min-width: 0;
+    }
+
+    .d-id {
+      font-size: 11.5px;
+      color: var(--text-tertiary);
+      font-family: 'IBM Plex Mono', monospace;
+    }
+
+    .d-route {
+      font-size: 13px;
+      font-weight: 500;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      margin-top: 1px;
+    }
+
+    .d-meta {
+      font-size: 11.5px;
+      color: var(--text-tertiary);
+      margin-top: 2px;
+    }
+
+    .d-right {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-end;
+      gap: 5px;
+      flex-shrink: 0;
+    }
+
+    .d-eta {
+      font-size: 12px;
+      font-family: 'IBM Plex Mono', monospace;
+      color: var(--text-secondary);
+    }
+
+    .status-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      font-size: 10.5px;
+      font-weight: 600;
+      letter-spacing: 0.02em;
+      padding: 3px 8px;
+      border-radius: var(--radius-pill);
+      white-space: nowrap;
+    }
+
+    .status-dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+    }
+
+    .st-pending .status-dot,
+    .st-preparing .status-dot,
+    .st-ready .status-dot {
+      background: var(--amber);
+    }
+
+    .st-pending,
+    .st-preparing,
+    .st-ready {
+      background: var(--amber-dim);
+      color: var(--amber);
+    }
+
+    .st-assigned .status-dot,
+    .st-pickup .status-dot {
+      background: var(--blue);
+    }
+
+    .st-assigned,
+    .st-pickup {
+      background: var(--blue-dim);
+      color: var(--blue);
+    }
+
+    .st-intransit .status-dot,
+    .st-arriving .status-dot {
+      background: var(--teal);
+    }
+
+    .st-intransit,
+    .st-arriving {
+      background: var(--teal-dim);
+      color: var(--teal);
+    }
+
+    .st-delivered .status-dot {
+      background: var(--good);
+    }
+
+    .st-delivered {
+      background: var(--good-dim);
+      color: var(--good);
+    }
+
+    .st-delayed .status-dot {
+      background: var(--bad);
+    }
+
+    .st-delayed {
+      background: var(--bad-dim);
+      color: var(--bad);
+    }
+
+    /* alerts list */
+    .alert-row {
+      display: flex;
+      gap: 10px;
+      padding: 12px 14px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .alert-ico {
+      width: 30px;
+      height: 30px;
+      border-radius: var(--radius-card);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+
+    .alert-ico.bad {
+      background: var(--bad-dim);
+      color: var(--bad);
+    }
+
+    .alert-ico.warn {
+      background: var(--amber-dim);
+      color: var(--amber);
+    }
+
+    .alert-ico.info {
+      background: var(--blue-dim);
+      color: var(--blue);
+    }
+
+    .alert-text {
+      font-size: 12.5px;
+      line-height: 1.4;
+    }
+
+    .alert-time {
+      font-size: 11px;
+      color: var(--text-tertiary);
+      margin-top: 3px;
+      font-family: 'IBM Plex Mono', monospace;
+    }
+
+    .alert-row.new {
+      animation: alertIn .4s ease;
+    }
+
+    @keyframes alertIn {
+      from {
+        background: var(--amber-dim);
+      }
+
+      to {
+        background: transparent;
+      }
+    }
+
+    /* ---- empty state ---- */
+    .empty-state {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      padding: 40px 20px;
+      text-align: center;
+      color: var(--text-tertiary);
+    }
+
+    .empty-state svg {
+      opacity: 0.5;
+    }
+
+    .empty-state .es-title {
+      font-size: 12.5px;
+      font-weight: 500;
+      color: var(--text-secondary);
+    }
+
+    .empty-state .es-sub {
+      font-size: 11.5px;
+      max-width: 220px;
+      line-height: 1.5;
+    }
+
+    /* ---- toast ---- */
+    .toast {
+      position: fixed;
+      bottom: 20px;
+      right: 20px;
+      z-index: 50;
+      max-width: 280px;
+      background: var(--panel-raised);
+      border: 1px solid var(--border-strong);
+      border-left: 3px solid var(--amber);
+      border-radius: var(--radius-card);
+      padding: 12px 16px;
+      font-size: 12.5px;
+      color: var(--text-primary);
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+      transform: translateY(12px);
+      opacity: 0;
+      pointer-events: none;
+      transition: transform .3s ease, opacity .3s ease;
+    }
+
+    .toast.show {
+      transform: translateY(0);
+      opacity: 1;
+    }
+
+    /* ---- accessibility: visible keyboard focus ---- */
+    button:focus-visible,
+    input:focus-visible,
+    [tabindex]:focus-visible {
+      outline: 2px solid var(--amber);
+      outline-offset: 2px;
+      border-radius: 4px;
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+
+      .live-dot,
+      .marker-pulse,
+      .alert-row.new {
+        animation: none !important;
+      }
+
+      .map-viewport,
+      .toast {
+        transition: none !important;
+      }
+    }
+
+    /* ---- detail panel ---- */
+    .detail-panel {
+      display: grid;
+      grid-template-columns: minmax(220px, .8fr) minmax(360px, 1.5fr) minmax(220px, .8fr);
+      align-items: stretch;
+      flex-shrink: 0;
+      min-height: 282px;
+    }
+
+    .detail-col {
+      padding: 18px 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .detail-col.info {
+      min-width: 0;
+      border-right: 1px solid var(--border);
+      gap: 8px;
+    }
+
+    .detail-id-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .detail-id {
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 15px;
+      font-weight: 600;
+      letter-spacing: 0.01em;
+    }
+
+    .detail-route {
+      font-size: 15px;
+      font-weight: 600;
+      margin-top: 2px;
+    }
+
+    .detail-route .arrow {
+      color: var(--text-tertiary);
+      margin: 0 6px;
+    }
+
+    .detail-sub {
+      font-size: 12.5px;
+      color: var(--text-secondary);
+    }
+
+    .detail-link {
+      background: transparent;
+      border: 0;
+      color: var(--teal);
+      cursor: pointer;
+      font: inherit;
+      padding: 0;
+    }
+
+    .detail-link:hover {
+      color: var(--text-primary);
+      text-decoration: underline;
+    }
+
+    .detail-grid2 {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px 16px;
+      margin-top: 6px;
+    }
+
+    .dg-label {
+      font-size: 10.5px;
+      color: var(--text-tertiary);
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+    }
+
+    .dg-value {
+      font-size: 13px;
+      font-weight: 500;
+      margin-top: 2px;
+      font-family: 'IBM Plex Mono', monospace;
+    }
+
+    .detail-col.timeline {
+      min-width: 0;
+      gap: 14px;
+      overflow: hidden;
+    }
+
+    .investigation-heading {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      color: var(--text-secondary);
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: .08em;
+      text-transform: uppercase;
+    }
+
+    .investigation-heading span:last-child {
+      color: var(--text-tertiary);
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 10px;
+      letter-spacing: 0;
+      text-transform: none;
+    }
+
+    .timeline-track {
+      display: grid;
+      gap: 7px;
+      overflow-y: auto;
+      position: relative;
+      padding: 0 4px 2px 0;
+    }
+
+    .tl-step {
+      display: grid;
+      grid-template-columns: 16px 54px 1fr;
+      align-items: center;
+      gap: 10px;
+      position: relative;
+      min-height: 24px;
+      text-align: left;
+    }
+
+    .tl-dot {
+      width: 16px;
+      height: 16px;
+      border-radius: 50%;
+      background: var(--panel-raised);
+      border: 2px solid var(--border-strong);
+      z-index: 2;
+    }
+
+    .tl-line {
+      position: absolute;
+      top: 18px;
+      bottom: -7px;
+      left: 7px;
+      width: 2px;
+      background: var(--border);
+      z-index: 1;
+    }
+
+    .tl-step:last-child .tl-line {
+      bottom: 50%;
+    }
+
+    .tl-step.done .tl-dot {
+      background: var(--teal);
+      border-color: var(--teal);
+    }
+
+    .tl-step.done .tl-line {
+      background: var(--teal);
+    }
+
+    .tl-step.current .tl-dot {
+      background: var(--ink);
+      border-color: var(--amber);
+      box-shadow: 0 0 0 3px var(--amber-dim);
+    }
+
+    .tl-label {
+      font-size: 11px;
+      color: var(--text-tertiary);
+      margin-top: 0;
+      letter-spacing: 0.02em;
+    }
+
+    .tl-step.done .tl-label {
+      color: var(--text-secondary);
+    }
+
+    .tl-step.current .tl-label {
+      color: var(--amber);
+      font-weight: 600;
+    }
+
+    .tl-time {
+      color: var(--text-tertiary);
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 10px;
+    }
+
+    .signals {
+      border-top: 1px solid var(--border);
+      padding-top: 12px;
+      display: grid;
+      gap: 7px;
+    }
+
+    .signal-row {
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      color: var(--text-secondary);
+      font-size: 11.5px;
+    }
+
+    .signal-mark {
+      width: 16px;
+      color: var(--good);
+      font-size: 13px;
+      text-align: center;
+    }
+
+    .signal-row.warn .signal-mark {
+      color: var(--amber);
+    }
+
+    .detail-col.action {
+      min-width: 0;
+      border-left: 1px solid var(--border);
+      justify-content: flex-start;
+      gap: 8px;
+    }
+
+    .action-stack {
+      display: grid;
+      gap: 8px;
+      margin-top: auto;
+    }
+
+    .action-stack .btn-secondary {
+      flex: none;
+      width: 100%;
+    }
+
+    .btn-primary {
+      background: var(--amber);
+      color: #1A1200;
+      border: none;
+      border-radius: var(--radius-card);
+      padding: 11px 14px;
+      font-size: 13px;
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+    }
+
+    .btn-primary:hover {
+      background: #EFB158;
+    }
+
+    .btn-row {
+      display: flex;
+      gap: 8px;
+    }
+
+    .btn-secondary {
+      flex: 1;
+      background: var(--panel-raised);
+      color: var(--text-secondary);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-card);
+      padding: 9px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      font-size: 12px;
+    }
+
+    .btn-secondary:hover {
+      background: var(--panel-hover);
+      color: var(--text-primary);
+    }
+
+    /* ---- courier fleet view ---- */
+    .courier-view {
+      display: none;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    .courier-view.visible {
+      display: flex;
+    }
+
+    .courier-head {
+      display: flex;
+      align-items: flex-end;
+      justify-content: space-between;
+      gap: 16px;
+    }
+
+    .view-kicker {
+      color: var(--amber);
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 10px;
+      letter-spacing: .08em;
+      text-transform: uppercase;
+    }
+
+    .view-title {
+      font-size: 25px;
+      font-weight: 600;
+      margin-top: 4px;
+    }
+
+    .view-subtitle {
+      color: var(--text-secondary);
+      font-size: 12px;
+      margin-top: 5px;
+    }
+
+    .courier-toolbar {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .courier-search {
+      width: 220px;
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-card);
+      color: var(--text-primary);
+      outline: none;
+      padding: 9px 11px;
+      font: 12px 'IBM Plex Sans', sans-serif;
+    }
+
+    .fleet-summary {
+      display: grid;
+      grid-template-columns: repeat(5, 1fr);
+      gap: 10px;
+    }
+
+    .fleet-stat {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-panel);
+      padding: 14px 16px;
+    }
+
+    .fleet-stat-top {
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      color: var(--text-secondary);
+      font-size: 11.5px;
+    }
+
+    .fleet-stat-dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: var(--good);
+    }
+
+    .fleet-stat-value {
+      display: block;
+      font: 600 25px 'IBM Plex Mono', monospace;
+      margin-top: 8px;
+    }
+
+    .fleet-stat-sub {
+      color: var(--text-tertiary);
+      font-size: 10.5px;
+      margin-top: 3px;
+    }
+
+    .fleet-stat.delivery .fleet-stat-dot {
+      background: var(--teal);
+    }
+
+    .fleet-stat.offline .fleet-stat-dot {
+      background: var(--neutral);
+    }
+
+    .fleet-stat.delayed {
+      border-color: rgba(221, 91, 95, .4);
+    }
+
+    .fleet-stat.delayed .fleet-stat-dot {
+      background: var(--bad);
+    }
+
+    .fleet-stat.delayed .fleet-stat-value {
+      color: var(--bad);
+    }
+
+    .fleet-layout {
+      display: grid;
+      grid-template-columns: minmax(0, 1.7fr) minmax(280px, .8fr);
+      gap: 12px;
+      align-items: start;
+    }
+
+    .fleet-panel {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-panel);
+      overflow: hidden;
+    }
+
+    .fleet-panel-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border-bottom: 1px solid var(--border);
+      padding: 14px 16px;
+    }
+
+    .fleet-panel-title {
+      font-size: 13.5px;
+      font-weight: 600;
+    }
+
+    .fleet-panel-meta {
+      color: var(--text-tertiary);
+      font: 10.5px 'IBM Plex Mono', monospace;
+    }
+
+    .courier-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 1px;
+      background: var(--border);
+    }
+
+    .courier-card {
+      background: var(--panel);
+      cursor: pointer;
+      display: grid;
+      grid-template-columns: 72px 1fr;
+      gap: 12px;
+      min-width: 0;
+      padding: 16px;
+      position: relative;
+      transition: background .15s ease;
+    }
+
+    .courier-card:hover,
+    .courier-card.selected {
+      background: var(--panel-hover);
+    }
+
+    .courier-card.selected::before {
+      background: var(--amber);
+      bottom: 0;
+      content: '';
+      left: 0;
+      position: absolute;
+      top: 0;
+      width: 3px;
+    }
+
+    .vehicle-thumb {
+      align-items: center;
+      background: linear-gradient(145deg, #26364b, #121a28);
+      border: 1px solid var(--border-strong);
+      border-radius: var(--radius-card);
+      display: flex;
+      height: 72px;
+      justify-content: center;
+      overflow: hidden;
+      width: 72px;
+    }
+
+    .vehicle-thumb svg {
+      color: var(--text-secondary);
+      height: 46px;
+      width: 58px;
+    }
+
+    .vehicle-thumb.van svg {
+      color: var(--amber);
+    }
+
+    .vehicle-thumb.bike svg {
+      color: var(--teal);
+    }
+
+    .courier-card-top {
+      align-items: flex-start;
+      display: flex;
+      gap: 8px;
+      justify-content: space-between;
+    }
+
+    .courier-name {
+      font-size: 13px;
+      font-weight: 700;
+      letter-spacing: .04em;
+    }
+
+    .courier-status {
+      align-items: center;
+      border-radius: var(--radius-pill);
+      display: inline-flex;
+      font-size: 10px;
+      gap: 5px;
+      padding: 4px 7px;
+      white-space: nowrap;
+    }
+
+    .courier-status::before {
+      background: currentColor;
+      border-radius: 50%;
+      content: '';
+      height: 6px;
+      width: 6px;
+    }
+
+    .courier-status.online {
+      background: var(--good-dim);
+      color: var(--good);
+    }
+
+    .courier-status.delivery {
+      background: var(--teal-dim);
+      color: var(--teal);
+    }
+
+    .courier-status.delayed {
+      background: var(--bad-dim);
+      color: var(--bad);
+    }
+
+    .courier-vehicle,
+    .courier-location {
+      color: var(--text-secondary);
+      font-size: 11px;
+      margin-top: 5px;
+    }
+
+    .courier-location {
+      color: var(--text-tertiary);
+    }
+
+    .courier-metrics {
+      border-top: 1px solid var(--border);
+      display: flex;
+      gap: 16px;
+      margin-top: 11px;
+      padding-top: 9px;
+    }
+
+    .courier-metric-label {
+      color: var(--text-tertiary);
+      display: block;
+      font-size: 9.5px;
+    }
+
+    .courier-metric-value {
+      display: block;
+      font: 500 12px 'IBM Plex Mono', monospace;
+      margin-top: 3px;
+    }
+
+    .courier-metric-value.rating {
+      color: var(--amber);
+    }
+
+    .profile-panel {
+      min-height: 410px;
+    }
+
+    .profile-empty {
+      color: var(--text-tertiary);
+      font-size: 12px;
+      line-height: 1.5;
+      padding: 36px 20px;
+      text-align: center;
+    }
+
+    .profile-content {
+      padding: 18px;
+    }
+
+    .profile-identity {
+      align-items: center;
+      display: flex;
+      gap: 12px;
+    }
+
+    .profile-avatar {
+      align-items: center;
+      background: var(--amber-dim);
+      border: 1px solid rgba(227, 161, 61, .35);
+      border-radius: 50%;
+      color: var(--amber);
+      display: flex;
+      font: 600 15px 'IBM Plex Mono', monospace;
+      height: 48px;
+      justify-content: center;
+      width: 48px;
+    }
+
+    .profile-name {
+      font-size: 16px;
+      font-weight: 600;
+    }
+
+    .profile-role {
+      color: var(--text-tertiary);
+      font-size: 11px;
+      margin-top: 3px;
+    }
+
+    .profile-location {
+      background: var(--ink-raised);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-card);
+      color: var(--text-secondary);
+      font-size: 11px;
+      margin-top: 18px;
+      padding: 11px;
+    }
+
+    .profile-grid {
+      border-bottom: 1px solid var(--border);
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 15px 12px;
+      padding: 18px 0;
+    }
+
+    .profile-label {
+      color: var(--text-tertiary);
+      font-size: 10px;
+      text-transform: uppercase;
+      letter-spacing: .05em;
+    }
+
+    .profile-value {
+      font: 500 12px 'IBM Plex Mono', monospace;
+      margin-top: 4px;
+    }
+
+    .profile-value.good {
+      color: var(--good);
+    }
+
+    .profile-actions {
+      display: grid;
+      gap: 8px;
+      margin-top: 18px;
+    }
+
+    /* ---- delivery order-management view ---- */
+    .delivery-view {
+      display: none;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    .delivery-view.visible {
+      display: flex;
+    }
+
+    .delivery-head {
+      align-items: flex-end;
+      display: flex;
+      justify-content: space-between;
+      gap: 16px;
+    }
+
+    .delivery-toolbar {
+      align-items: center;
+      display: flex;
+      gap: 8px;
+    }
+
+    .delivery-search {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-card);
+      color: var(--text-primary);
+      outline: none;
+      padding: 9px 11px;
+      width: 220px;
+    }
+
+    .delivery-filters {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-card);
+      display: flex;
+      gap: 2px;
+      overflow-x: auto;
+      padding: 3px;
+    }
+
+    .delivery-filter {
+      background: transparent;
+      border: 0;
+      border-radius: 5px;
+      color: var(--text-tertiary);
+      font-size: 11px;
+      padding: 7px 10px;
+      white-space: nowrap;
+    }
+
+    .delivery-filter:hover,
+    .delivery-filter.active {
+      background: var(--amber-dim);
+      color: var(--amber);
+    }
+
+    .orders-panel {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-panel);
+      overflow: hidden;
+    }
+
+    .orders-panel-head {
+      align-items: center;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      justify-content: space-between;
+      padding: 14px 16px;
+    }
+
+    .orders-panel-title {
+      font-size: 13.5px;
+      font-weight: 600;
+    }
+
+    .orders-panel-meta {
+      color: var(--text-tertiary);
+      font: 10.5px 'IBM Plex Mono', monospace;
+    }
+
+    .orders-table-wrap {
+      overflow-x: auto;
+    }
+
+    .orders-table {
+      border-collapse: collapse;
+      min-width: 760px;
+      width: 100%;
+    }
+
+    .orders-table th {
+      color: var(--text-tertiary);
+      font-size: 10px;
+      font-weight: 500;
+      letter-spacing: .06em;
+      padding: 11px 16px;
+      text-align: left;
+      text-transform: uppercase;
+    }
+
+    .orders-table td {
+      border-top: 1px solid var(--border);
+      color: var(--text-secondary);
+      font-size: 12px;
+      padding: 14px 16px;
+    }
+
+    .orders-table tbody tr {
+      cursor: pointer;
+      transition: background .15s ease;
+    }
+
+    .orders-table tbody tr:hover {
+      background: var(--panel-hover);
+    }
+
+    .orders-table tbody tr.selected {
+      background: var(--panel-hover);
+      box-shadow: inset 3px 0 var(--amber);
+    }
+
+    .order-id {
+      color: var(--text-primary);
+      font: 500 11px 'IBM Plex Mono', monospace;
+    }
+
+    .order-merchant {
+      color: var(--text-primary);
+      font-weight: 500;
+    }
+
+    .table-link {
+      background: transparent;
+      border: 0;
+      color: var(--text-primary);
+      cursor: pointer;
+      font: inherit;
+      font-weight: 500;
+      padding: 0;
+      text-align: left;
+    }
+
+    .table-link:hover {
+      color: var(--teal);
+      text-decoration: underline;
+    }
+
+    .order-muted {
+      color: var(--text-tertiary);
+      font-size: 11px;
+      margin-top: 3px;
+    }
+
+    .order-eta {
+      color: var(--text-primary);
+      font: 500 12px 'IBM Plex Mono', monospace;
+    }
+
+    .delivery-empty {
+      color: var(--text-tertiary);
+      display: none;
+      font-size: 12px;
+      padding: 40px;
+      text-align: center;
+    }
+
+    /* ---- merchant intelligence view ---- */
+    .merchant-view {
+      display: none;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    .merchant-view.visible {
+      display: flex;
+    }
+
+    .merchant-head {
+      align-items: flex-end;
+      display: flex;
+      justify-content: space-between;
+      gap: 16px;
+    }
+
+    .merchant-head-note {
+      color: var(--text-secondary);
+      font-size: 12px;
+    }
+
+    .merchant-updated {
+      color: var(--text-tertiary);
+      font: 10.5px 'IBM Plex Mono', monospace;
+    }
+
+    .merchant-layout {
+      display: grid;
+      grid-template-columns: minmax(0, 1.3fr) minmax(320px, .9fr);
+      gap: 12px;
+      align-items: start;
+    }
+
+    .merchant-panel {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-panel);
+      overflow: hidden;
+    }
+
+    .merchant-panel-head {
+      align-items: center;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      justify-content: space-between;
+      padding: 14px 16px;
+    }
+
+    .merchant-panel-title {
+      font-size: 13.5px;
+      font-weight: 600;
+    }
+
+    .merchant-panel-meta {
+      color: var(--text-tertiary);
+      font: 10.5px 'IBM Plex Mono', monospace;
+    }
+
+    .merchant-cards {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 1px;
+      background: var(--border);
+    }
+
+    .merchant-card {
+      background: var(--panel);
+      cursor: pointer;
+      padding: 17px;
+      position: relative;
+      transition: background .15s ease;
+    }
+
+    .merchant-card:hover,
+    .merchant-card.selected {
+      background: var(--panel-hover);
+    }
+
+    .merchant-card.selected::before {
+      background: var(--amber);
+      bottom: 0;
+      content: '';
+      left: 0;
+      position: absolute;
+      top: 0;
+      width: 3px;
+    }
+
+    .merchant-card-top {
+      align-items: flex-start;
+      display: flex;
+      justify-content: space-between;
+      gap: 10px;
+    }
+
+    .merchant-name {
+      color: var(--text-primary);
+      font-size: 14px;
+      font-weight: 600;
+    }
+
+    .merchant-type {
+      color: var(--text-tertiary);
+      font-size: 10px;
+      margin-top: 4px;
+    }
+
+    .merchant-health {
+      background: var(--good-dim);
+      border-radius: var(--radius-pill);
+      color: var(--good);
+      font-size: 10px;
+      padding: 4px 7px;
+    }
+
+    .merchant-card-stats {
+      border-top: 1px solid var(--border);
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 12px;
+      margin-top: 17px;
+      padding-top: 12px;
+    }
+
+    .merchant-stat-label {
+      color: var(--text-tertiary);
+      display: block;
+      font-size: 10px;
+    }
+
+    .merchant-stat-value {
+      color: var(--text-primary);
+      display: block;
+      font: 500 14px 'IBM Plex Mono', monospace;
+      margin-top: 4px;
+    }
+
+    .merchant-stat-value.good {
+      color: var(--good);
+    }
+
+    .merchant-detail {
+      min-height: 380px;
+      padding: 18px;
+    }
+
+    .merchant-detail-identity {
+      align-items: center;
+      display: flex;
+      gap: 12px;
+    }
+
+    .merchant-avatar {
+      align-items: center;
+      background: var(--amber-dim);
+      border: 1px solid rgba(227, 161, 61, .35);
+      border-radius: 9px;
+      color: var(--amber);
+      display: flex;
+      font: 600 16px 'IBM Plex Mono', monospace;
+      height: 48px;
+      justify-content: center;
+      width: 48px;
+    }
+
+    .merchant-detail-name {
+      font-size: 17px;
+      font-weight: 600;
+    }
+
+    .merchant-detail-sub {
+      color: var(--text-tertiary);
+      font-size: 11px;
+      margin-top: 3px;
+    }
+
+    .performance-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 1px;
+      background: var(--border);
+      margin-top: 20px;
+    }
+
+    .performance-metric {
+      background: var(--panel);
+      padding: 13px;
+    }
+
+    .performance-metric-label {
+      color: var(--text-tertiary);
+      display: block;
+      font-size: 10px;
+    }
+
+    .performance-metric-value {
+      color: var(--text-primary);
+      display: block;
+      font: 500 17px 'IBM Plex Mono', monospace;
+      margin-top: 6px;
+    }
+
+    .performance-metric-value.good {
+      color: var(--good);
+    }
+
+    .performance-metric-value.warn {
+      color: var(--amber);
+    }
+
+    .performance-bars {
+      display: grid;
+      gap: 12px;
+      margin-top: 20px;
+    }
+
+    .performance-bar-head {
+      align-items: center;
+      display: flex;
+      justify-content: space-between;
+      color: var(--text-secondary);
+      font-size: 11px;
+    }
+
+    .performance-bar-head strong {
+      color: var(--text-primary);
+      font: 500 11px 'IBM Plex Mono', monospace;
+    }
+
+    .performance-bar-track {
+      background: var(--panel-raised);
+      border-radius: 5px;
+      height: 6px;
+      margin-top: 6px;
+      overflow: hidden;
+    }
+
+    .performance-bar-fill {
+      background: var(--teal);
+      border-radius: inherit;
+      height: 100%;
+      transition: width .25s ease;
+    }
+
+    .performance-bar-fill.warn {
+      background: var(--amber);
+    }
+
+    .merchant-detail-action {
+      margin-top: 20px;
+      width: 100%;
+    }
+
+    .merchant-detail-actions {
+      display: grid;
+      gap: 8px;
+      margin-top: 20px;
+    }
+
+    .merchant-detail-actions .merchant-detail-action {
+      margin-top: 0;
+    }
+
+    @media (max-width: 980px) {
+      .merchant-layout {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    @media (max-width: 700px) {
+      .merchant-head {
+        align-items: flex-start;
+        flex-direction: column;
+      }
+
+      .merchant-cards {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    /* ---- reports / analytics view ---- */
+    .reports-view {
+      display: none;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    .reports-view.visible {
+      display: flex;
+    }
+
+    .reports-kicker {
+      color: var(--amber);
+      font: 600 10px 'IBM Plex Mono', monospace;
+      letter-spacing: .08em;
+      text-transform: uppercase;
+    }
+
+    .reports-head {
+      align-items: flex-end;
+      display: flex;
+      justify-content: space-between;
+      gap: 16px;
+    }
+
+    .reports-title {
+      color: var(--text-primary);
+      font-size: 25px;
+      font-weight: 600;
+      margin-top: 4px;
+    }
+
+    .reports-subtitle {
+      color: var(--text-secondary);
+      font-size: 12px;
+      margin-top: 5px;
+    }
+
+    .reports-controls {
+      align-items: center;
+      display: flex;
+      gap: 10px;
+    }
+
+    .demo-badge {
+      border: 1px solid var(--border-strong);
+      border-radius: var(--radius-pill);
+      color: var(--text-tertiary);
+      font: 10px 'IBM Plex Mono', monospace;
+      padding: 6px 9px;
+    }
+
+    .range-select {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-card);
+      color: var(--text-primary);
+      font: 12px 'IBM Plex Sans', sans-serif;
+      padding: 8px 10px;
+    }
+
+    .report-kpis {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 12px;
+    }
+
+    .report-kpi {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-panel);
+      padding: 14px 16px;
+    }
+
+    .report-kpi-label {
+      color: var(--text-secondary);
+      font-size: 12px;
+      font-weight: 500;
+    }
+
+    .report-kpi-value {
+      color: var(--text-primary);
+      display: block;
+      font: 600 28px 'IBM Plex Mono', monospace;
+      letter-spacing: -0.01em;
+      margin-top: 6px;
+    }
+
+    .report-kpi-note {
+      color: var(--teal);
+      font-size: 11.5px;
+      margin-top: 5px;
+    }
+
+    .report-grid {
+      display: grid;
+      grid-template-columns: 1.35fr .9fr;
+      gap: 12px;
+    }
+
+    .report-panel {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-panel);
+      overflow: hidden;
+    }
+
+    .report-panel-head {
+      align-items: center;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      justify-content: space-between;
+      padding: 13px 15px;
+    }
+
+    .report-panel-title {
+      color: var(--text-primary);
+      font-size: 13.5px;
+      font-weight: 600;
+    }
+
+    .report-panel-meta {
+      color: var(--text-tertiary);
+      font: 10px 'IBM Plex Mono', monospace;
+    }
+
+    .chart-area {
+      padding: 15px;
+    }
+
+    .chart-area svg {
+      height: 170px;
+      width: 100%;
+    }
+
+    .chart-grid-line {
+      stroke: var(--border);
+      stroke-width: 1;
+    }
+
+    .chart-axis {
+      fill: var(--text-tertiary);
+      font: 9px 'IBM Plex Mono', monospace;
+    }
+
+    .chart-line {
+      fill: none;
+      stroke: var(--teal);
+      stroke-linecap: round;
+      stroke-linejoin: round;
+      stroke-width: 3;
+    }
+
+    .chart-area-fill {
+      fill: var(--teal-dim);
+    }
+
+    .chart-dot {
+      fill: var(--panel);
+      stroke: var(--teal);
+      stroke-width: 2;
+    }
+
+    .status-bars {
+      display: grid;
+      gap: 13px;
+      padding: 17px 15px 18px;
+    }
+
+    .status-bar-row {
+      align-items: center;
+      display: grid;
+      grid-template-columns: 82px 1fr 34px;
+      gap: 10px;
+    }
+
+    .status-bar-label {
+      color: var(--text-secondary);
+      font-size: 10.5px;
+    }
+
+    .status-bar-track {
+      background: var(--panel-raised);
+      border-radius: 4px;
+      height: 8px;
+      overflow: hidden;
+    }
+
+    .status-bar-fill {
+      background: var(--teal);
+      border-radius: inherit;
+      height: 100%;
+    }
+
+    .status-bar-fill.amber {
+      background: var(--amber);
+    }
+
+    .status-bar-fill.red {
+      background: var(--bad);
+    }
+
+    .status-bar-value {
+      color: var(--text-secondary);
+      font: 500 10px 'IBM Plex Mono', monospace;
+      text-align: right;
+    }
+
+    .insights {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-panel);
+      padding: 17px 18px;
+    }
+
+    .insights-title {
+      color: var(--text-primary);
+      font-size: 13.5px;
+      font-weight: 600;
+    }
+
+    .insights-note {
+      border-top: 1px solid var(--border);
+      color: var(--text-secondary);
+      font-size: 11.5px;
+      line-height: 1.45;
+      margin-top: 12px;
+      padding-top: 10px;
+    }
+
+    .insights-note strong {
+      color: var(--amber);
+      font-weight: 500;
+    }
+
+    .courier-ranking {
+      display: grid;
+      gap: 1px;
+      padding: 0 15px 15px;
+    }
+
+    .ranking-row {
+      align-items: center;
+      border-bottom: 1px solid var(--border);
+      display: grid;
+      grid-template-columns: 1fr 52px 70px;
+      padding: 10px 0;
+    }
+
+    .ranking-row:last-child {
+      border-bottom: none;
+    }
+
+    .ranking-name {
+      color: var(--text-primary);
+      font-size: 11.5px;
+    }
+
+    .ranking-score {
+      color: var(--amber);
+      font: 500 11px 'IBM Plex Mono', monospace;
+    }
+
+    .ranking-orders {
+      color: var(--text-tertiary);
+      font: 10px 'IBM Plex Mono', monospace;
+      text-align: right;
+    }
+
+    @media (max-width: 900px) {
+      .report-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    @media (max-width: 700px) {
+      .reports-head {
+        align-items: flex-start;
+        flex-direction: column;
+      }
+
+      .report-kpis {
+        grid-template-columns: repeat(2, 1fr);
+      }
+
+      .reports-controls {
+        width: 100%;
+        justify-content: space-between;
+      }
+    }
+
+    /* ---- operations settings view ---- */
+    .settings-view {
+      display: none;
+      flex-direction: column;
+      gap: 16px;
+      max-width: 920px;
+    }
+
+    .settings-view.visible {
+      display: flex;
+    }
+
+    .settings-head {
+      border-bottom: 1px solid var(--border);
+      padding-bottom: 16px;
+    }
+
+    .settings-subtitle {
+      color: var(--text-secondary);
+      font-size: 12px;
+      margin-top: 5px;
+    }
+
+    .settings-layout {
+      display: grid;
+      grid-template-columns: minmax(0, 1.1fr) minmax(250px, .8fr);
+      gap: 12px;
+    }
+
+    .settings-panel {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-panel);
+      overflow: hidden;
+    }
+
+    .settings-panel-head {
+      border-bottom: 1px solid var(--border);
+      padding: 14px 16px;
+    }
+
+    .settings-panel-title {
+      font-size: 13.5px;
+      font-weight: 600;
+    }
+
+    .settings-panel-sub {
+      color: var(--text-tertiary);
+      font-size: 11px;
+      margin-top: 4px;
+    }
+
+    .settings-row {
+      align-items: center;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      justify-content: space-between;
+      gap: 15px;
+      padding: 14px 16px;
+    }
+
+    .settings-row:last-child {
+      border-bottom: 0;
+    }
+
+    .settings-label {
+      color: var(--text-primary);
+      display: block;
+      font-size: 12px;
+    }
+
+    .settings-help {
+      color: var(--text-tertiary);
+      display: block;
+      font-size: 10.5px;
+      margin-top: 3px;
+    }
+
+    .toggle {
+      appearance: none;
+      background: var(--neutral-dim);
+      border: 1px solid var(--border-strong);
+      border-radius: var(--radius-pill);
+      cursor: pointer;
+      height: 20px;
+      margin: 0;
+      position: relative;
+      width: 36px;
+    }
+
+    .toggle::after {
+      background: var(--text-tertiary);
+      border-radius: 50%;
+      content: '';
+      height: 14px;
+      left: 2px;
+      position: absolute;
+      top: 2px;
+      transition: transform .15s ease, background .15s ease;
+      width: 14px;
+    }
+
+    .toggle:checked {
+      background: var(--teal-dim);
+      border-color: rgba(63, 182, 174, .5);
+    }
+
+    .toggle:checked::after {
+      background: var(--teal);
+      transform: translateX(16px);
+    }
+
+    .zone-list {
+      display: grid;
+      gap: 8px;
+      padding: 14px 16px 16px;
+    }
+
+    .zone-option {
+      align-items: center;
+      background: var(--panel-raised);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-card);
+      color: var(--text-secondary);
+      display: flex;
+      font-size: 12px;
+      justify-content: space-between;
+      padding: 10px 11px;
+    }
+
+    .zone-option.active {
+      border-color: rgba(227, 161, 61, .5);
+      color: var(--amber);
+    }
+
+    .zone-option input {
+      accent-color: var(--amber);
+    }
+
+    .threshold-list {
+      padding: 4px 16px 12px;
+    }
+
+    .threshold-row {
+      align-items: center;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      justify-content: space-between;
+      padding: 13px 0;
+    }
+
+    .threshold-row:last-child {
+      border-bottom: 0;
+    }
+
+    .threshold-control {
+      align-items: center;
+      display: flex;
+      gap: 7px;
+    }
+
+    .threshold-control input {
+      background: var(--panel-raised);
+      border: 1px solid var(--border-strong);
+      border-radius: var(--radius-card);
+      color: var(--text-primary);
+      font: 12px 'IBM Plex Mono', monospace;
+      padding: 7px 8px;
+      text-align: right;
+      width: 54px;
+    }
+
+    .threshold-control span {
+      color: var(--text-tertiary);
+      font-size: 11px;
+    }
+
+    .settings-note {
+      background: var(--blue-dim);
+      border: 1px solid rgba(91, 127, 214, .3);
+      border-radius: var(--radius-card);
+      color: var(--text-secondary);
+      font-size: 11px;
+      line-height: 1.5;
+      padding: 12px 14px;
+    }
+
+    @media (max-width: 760px) {
+      .settings-layout {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    @media (max-width: 820px) {
+      .delivery-head {
+        align-items: flex-start;
+        flex-direction: column;
+      }
+
+      .delivery-toolbar,
+      .delivery-search {
+        width: 100%;
+      }
+
+      .delivery-filters {
+        width: 100%;
+      }
+    }
+
+    @media (max-width: 980px) {
+      .fleet-layout {
+        grid-template-columns: 1fr;
+      }
+
+      .profile-panel {
+        min-height: 0;
+      }
+    }
+
+    @media (max-width: 700px) {
+      .courier-head {
+        align-items: flex-start;
+        flex-direction: column;
+      }
+
+      .courier-toolbar,
+      .courier-search {
+        width: 100%;
+      }
+
+      .fleet-summary {
+        grid-template-columns: repeat(2, 1fr);
+      }
+
+      .courier-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    /* ---------------- RESPONSIVE ---------------- */
+    @media (max-width: 1240px) {
+      .content-grid {
+        grid-template-columns: 1fr;
+        min-height: unset;
+      }
+
+      .map-wrap {
+        min-height: 340px;
+      }
+
+      .detail-panel {
+        grid-template-columns: minmax(220px, .8fr) minmax(300px, 1.2fr);
+      }
+
+      .detail-col.info,
+      .detail-col.action {
+        border-right: none;
+        border-left: none;
+        border-bottom: 1px solid var(--border);
+      }
+
+      .detail-col.action {
+        grid-column: 1 / -1;
+      }
+    }
+
+    @media (max-width: 860px) {
+      .kpi-row {
+        grid-template-columns: repeat(3, 1fr);
+      }
+
+      .kpi-row .kpi-card:nth-child(4),
+      .kpi-row .kpi-card:nth-child(5) {
+        display: none;
+      }
+
+      .search-box {
+        display: none;
+      }
+    }
+
+    @media (max-width: 620px) {
+      .app {
+        grid-template-columns: 60px 1fr;
+      }
+
+      .kpi-row {
+        grid-template-columns: repeat(2, 1fr);
+      }
+
+      .kpi-row .kpi-card:nth-child(3) {
+        display: none;
+      }
+
+      .detail-grid2 {
+        grid-template-columns: 1fr;
+      }
+
+      .detail-panel {
+        grid-template-columns: 1fr;
+      }
+
+      .detail-col.timeline,
+      .detail-col.action {
+        grid-column: auto;
+        border-left: none;
+      }
+    }
+  </style>
+</head>
+
+<body>
+
+  <div class="app">
+
+    <!-- ================= RAIL NAV ================= -->
+    <aside class="rail">
+      <div class="rail-mark">D</div>
+      <nav class="rail-nav">
+        <button class="rail-btn active" id="operationsNav" title="Operations">
+          <svg class="icon" viewBox="0 0 24 24">
+            <rect x="3" y="3" width="7" height="9" rx="1.5" />
+            <rect x="14" y="3" width="7" height="5" rx="1.5" />
+            <rect x="14" y="12" width="7" height="9" rx="1.5" />
+            <rect x="3" y="16" width="7" height="5" rx="1.5" />
+          </svg>
+        </button>
+        <button class="rail-btn" id="deliveriesNav" title="Deliveries">
+          <svg class="icon" viewBox="0 0 24 24">
+            <path d="M3 7h11v9H3z" />
+            <path d="M14 10h4l3 3v3h-7z" />
+            <circle cx="7" cy="18.5" r="1.6" />
+            <circle cx="17.5" cy="18.5" r="1.6" />
+          </svg>
+        </button>
+        <button class="rail-btn" id="couriersNav" title="Couriers">
+          <svg class="icon" viewBox="0 0 24 24">
+            <circle cx="12" cy="7" r="3.2" />
+            <path d="M5 21c0-4 3-6.5 7-6.5s7 2.5 7 6.5" />
+          </svg>
+        </button>
+        <button class="rail-btn" id="merchantsNav" title="Merchants">
+          <svg class="icon" viewBox="0 0 24 24">
+            <path d="M4 9l1.5-5h13L20 9" />
+            <path d="M4 9h16v10H4z" />
+            <path d="M9 19v-5h6v5" />
+          </svg>
+        </button>
+        <button class="rail-btn" id="reportsNav" title="Reports">
+          <svg class="icon" viewBox="0 0 24 24">
+            <path d="M4 20V10M11 20V4M18 20v-7" />
+          </svg>
+        </button>
+      </nav>
+      <div class="rail-foot">
+        <button class="rail-btn" id="settingsNav" title="Settings">
+          <svg class="icon" viewBox="0 0 24 24">
+            <circle cx="12" cy="12" r="3" />
+            <path
+              d="M12 2v3M12 19v3M4.2 4.2l2.1 2.1M17.7 17.7l2.1 2.1M2 12h3M19 12h3M4.2 19.8l2.1-2.1M17.7 6.3l2.1-2.1" />
+          </svg>
+        </button>
+        <div class="rail-avatar">RS</div>
+      </div>
+    </aside>
+
+    <!-- ================= MAIN ================= -->
+    <div class="main">
+
+      <!-- ---- topbar ---- -->
+      <header class="topbar">
+        <div class="topbar-left">
+          <span class="topbar-title" id="topbarTitle">Operations Center</span>
+          <span class="live-chip"><span class="live-dot"></span>LIVE · <span id="clock">08:42:17</span></span>
+        </div>
+        <div class="topbar-right">
+          <div class="search-box">
+            <svg class="icon" viewBox="0 0 24 24" style="width:15px;height:15px">
+              <circle cx="11" cy="11" r="7" />
+              <path d="M20 20l-3.5-3.5" />
+            </svg>
+            <input type="text" id="searchInput" placeholder="Search order, courier, merchant…" />
+          </div>
+          <button class="icon-btn" id="bellBtn" title="Alerts">
+            <svg class="icon" viewBox="0 0 24 24">
+              <path d="M6 9a6 6 0 1112 0c0 4 1.5 5.5 1.5 6.5H4.5C4.5 14.5 6 13 6 9z" />
+              <path d="M9.5 18.5a2.5 2.5 0 005 0" />
+            </svg>
+            <span class="badge-dot" id="bellBadge"></span>
+          </button>
+          <div class="user-chip">
+            <div class="rail-avatar">RS</div>
+            <div>
+              <div class="u-name">Riya Sundaram</div>
+              <div class="u-role">Ops Lead · Central Grid</div>
+            </div>
+          </div>
+        </div>
+      </header>
+
+      <div class="scroll-area">
+
+        <!-- ---- KPI row ---- -->
+        <section class="kpi-row" id="opsKpis">
+          <div class="kpi-card" data-filter="all" role="button" tabindex="0" title="Show all active deliveries">
+            <div class="kpi-top"><span class="kpi-label">Active Deliveries</span><span class="kpi-swatch"
+                style="background:var(--blue)"></span></div>
+            <span class="kpi-value" id="kpi-active">34</span>
+            <span class="kpi-sub">↑ 6 vs. last hour</span>
+          </div>
+          <div class="kpi-card" data-filter="awaiting" role="button" tabindex="0"
+            title="Filter to orders awaiting a courier">
+            <div class="kpi-top"><span class="kpi-label">Awaiting Assignment</span><span class="kpi-swatch"
+                style="background:var(--amber)"></span></div>
+            <span class="kpi-value">6</span>
+            <span class="kpi-sub">Avg wait 4.2 min</span>
+          </div>
+          <div class="kpi-card" data-filter="transit" role="button" tabindex="0"
+            title="Filter to deliveries in transit">
+            <div class="kpi-top"><span class="kpi-label">In Transit</span><span class="kpi-swatch"
+                style="background:var(--teal)"></span></div>
+            <span class="kpi-value" id="kpi-transit">19</span>
+            <span class="kpi-sub">Avg ETA 14 min</span>
+          </div>
+          <div class="kpi-card warn" data-filter="delayed" role="button" tabindex="0"
+            title="Filter to delayed deliveries">
+            <div class="kpi-top"><span class="kpi-label">Delayed</span><span class="kpi-swatch"
+                style="background:var(--bad)"></span></div>
+            <span class="kpi-value" id="kpi-delayed">3</span>
+            <span class="kpi-sub">Needs attention</span>
+          </div>
+          <div class="kpi-card" data-filter="completed" role="button" tabindex="0" title="Completed deliveries">
+            <div class="kpi-top"><span class="kpi-label">Completed Today</span><span class="kpi-swatch"
+                style="background:var(--good)"></span></div>
+            <span class="kpi-value">128</span>
+            <span class="kpi-sub">98.1% on-time</span>
+          </div>
+        </section>
+
+        <!-- ---- content grid: map + list ---- -->
+        <section class="content-grid" id="opsContent">
+
+          <!-- MAP PANEL -->
+          <div class="panel map-panel">
+            <div class="panel-head">
+              <span class="panel-title">Live Map <span class="count">Central Grid</span></span>
+              <div class="map-chip-row">
+                <button class="chip on" data-filter="all">All</button>
+                <button class="chip" data-filter="transit">In Transit</button>
+                <button class="chip" data-filter="delayed">Delayed</button>
+              </div>
+            </div>
+            <div class="map-wrap">
+              <svg viewBox="0 0 900 640" preserveAspectRatio="xMidYMid slice">
+                <defs>
+                  <pattern id="grid" width="42" height="42" patternUnits="userSpaceOnUse">
+                    <path d="M0 0H42M0 0V42" stroke="#1C2637" stroke-width="1" />
+                  </pattern>
+                  <linearGradient id="river" x1="0" y1="0" x2="1" y2="1">
+                    <stop offset="0" stop-color="#22475A" />
+                    <stop offset="1" stop-color="#1A3547" />
+                  </linearGradient>
+                  <filter id="glow">
+                    <feGaussianBlur stdDeviation="3.2" />
+                  </filter>
+                </defs>
+                <g id="mapViewport" class="map-viewport">
+                  <rect width="900" height="640" fill="#0F1720" />
+                  <rect width="900" height="640" fill="url(#grid)" />
+
+                  <!-- avenues -->
+                  <path d="M-20 470 L920 150" stroke="#2A3A52" stroke-width="3" />
+                  <path d="M120 -20 L120 660" stroke="#2A3A52" stroke-width="3" />
+                  <path d="M640 -20 L640 660" stroke="#2A3A52" stroke-width="3" />
+                  <path d="M-20 320 L920 320" stroke="#22304A" stroke-width="2" />
+
+                  <!-- river -->
+                  <path
+                    d="M-30 60 C 220 130, 360 40, 520 140 C 680 240, 760 180, 940 260 L 940 340 C 760 260, 680 320, 520 220 C 360 120, 220 210, -30 140 Z"
+                    fill="url(#river)" opacity="0.75" />
+
+                  <!-- park -->
+                  <ellipse cx="760" cy="480" rx="95" ry="70" fill="#1E3B30" opacity="0.7" />
+
+                  <!-- district labels -->
+                  <text x="150" y="40" class="map-label">NORTH YARD</text>
+                  <text x="660" y="120" class="map-label">RIVERSIDE</text>
+                  <text x="40" y="560" class="map-label">MAPLE QUARTER</text>
+                  <text x="670" y="560" class="map-label">HARBOR PARK</text>
+                  <text x="330" y="300" class="map-label">CENTRAL GRID</text>
+
+                  <!-- ===== ROUTES ===== -->
+                  <g id="routes">
+                    <path class="route-line" data-route="DSP-4821" d="M300 210 C 340 260, 380 300, 430 340"
+                      stroke="var(--teal)" stroke-width="3" fill="none" stroke-dasharray="0" />
+                    <path class="route-line" data-route="DSP-4821" d="M430 340 C 470 370, 500 390, 545 430"
+                      stroke="var(--teal)" stroke-width="3" fill="none" stroke-dasharray="6 6" opacity="0.55" />
+
+                    <path class="route-line" data-route="DSP-4796" d="M180 470 C 230 440, 260 400, 300 360"
+                      stroke="var(--teal)" stroke-width="2" fill="none" stroke-dasharray="6 6" opacity="0.4" />
+
+                    <path class="route-line" data-route="DSP-4788" d="M700 200 C 660 240, 630 260, 600 300"
+                      stroke="var(--blue)" stroke-width="2" fill="none" stroke-dasharray="4 5" opacity="0.4" />
+
+                    <path class="route-line" data-route="DSP-4779" d="M540 480 C 580 460, 610 440, 650 420"
+                      stroke="var(--bad)" stroke-width="2.5" fill="none" stroke-dasharray="3 5" opacity="0.55" />
+                  </g>
+
+                  <!-- ===== MARKERS ===== -->
+                  <!-- Merchant / pickup markers (bag icon, amber) -->
+                  <g class="marker-group" data-id="DSP-4821">
+                    <circle cx="300" cy="210" r="13" fill="#181E2C" stroke="var(--amber)" stroke-width="1.6" />
+                    <path d="M294 207h12v9a2 2 0 01-2 2h-8a2 2 0 01-2-2z" fill="none" stroke="var(--amber)"
+                      stroke-width="1.4" />
+                    <path d="M296 207a4 4 0 018 0" fill="none" stroke="var(--amber)" stroke-width="1.4" />
+                  </g>
+
+                  <!-- Courier markers (arrow, teal = moving, blue = idle/assigned) -->
+                  <g class="marker-group" data-id="DSP-4821">
+                    <circle class="marker-pulse" cx="430" cy="340" r="11" fill="var(--teal)" opacity="0.5" />
+                    <circle cx="430" cy="340" r="9" fill="#101820" stroke="var(--teal)" stroke-width="2" />
+                    <path d="M430 335 l4 8h-8z" fill="var(--teal)" transform="rotate(45 430 340)" />
+                  </g>
+
+                  <g class="marker-group" data-id="DSP-4796">
+                    <circle cx="180" cy="470" r="9" fill="#101820" stroke="var(--amber)" stroke-width="1.6" />
+                    <path d="M174 467h12v9a2 2 0 01-2 2h-8a2 2 0 01-2-2z" fill="none" stroke="var(--amber)"
+                      stroke-width="1.3" transform="scale(0.85) translate(30,80)" />
+                    <circle cx="300" cy="360" r="8" fill="#101820" stroke="var(--blue)" stroke-width="2" />
+                    <path d="M300 356 l3.6 7h-7.2z" fill="var(--blue)" transform="rotate(-30 300 360)" />
+                  </g>
+
+                  <g class="marker-group" data-id="DSP-4788">
+                    <circle cx="700" cy="200" r="9" fill="#101820" stroke="var(--amber)" stroke-width="1.6" />
+                    <circle cx="600" cy="300" r="8" fill="#101820" stroke="var(--blue)" stroke-width="2" />
+                    <path d="M600 296 l3.6 7h-7.2z" fill="var(--blue)" />
+                  </g>
+
+                  <g class="marker-group" data-id="DSP-4779">
+                    <circle cx="540" cy="480" r="9" fill="#101820" stroke="var(--amber)" stroke-width="1.6" />
+                    <circle class="marker-pulse" cx="650" cy="420" r="11" fill="var(--bad)" opacity="0.5" />
+                    <circle cx="650" cy="420" r="9" fill="#101820" stroke="var(--bad)" stroke-width="2" />
+                    <path d="M650 415 l4 8h-8z" fill="var(--bad)" transform="rotate(70 650 420)" />
+                  </g>
+
+                  <!-- destination pins -->
+                  <g class="marker-group" data-id="DSP-4821">
+                    <path d="M545 418 c0 10 12 24 12 24s12-14 12-24a12 12 0 10-24 0z" fill="#101820"
+                      stroke="var(--text-secondary)" stroke-width="1.6" />
+                    <circle cx="557" cy="418" r="3.2" fill="var(--text-secondary)" />
+                  </g>
+                </g>
+              </svg>
+
+              <div class="map-legend">
+                <div class="legend-row"><span class="legend-dot" style="background:var(--amber)"></span>Merchant /
+                  pickup</div>
+                <div class="legend-row"><span class="legend-dot" style="background:var(--blue)"></span>Courier ·
+                  assigned</div>
+                <div class="legend-row"><span class="legend-dot" style="background:var(--teal)"></span>Courier · in
+                  transit</div>
+                <div class="legend-row"><span class="legend-dot" style="background:var(--bad)"></span>Delayed</div>
+              </div>
+              <div class="map-zoom">
+                <button id="zoomIn" title="Zoom in">+</button>
+                <button id="zoomOut" title="Zoom out">−</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- LIST PANEL -->
+          <div class="panel">
+            <div class="panel-head">
+              <span class="panel-title">Deliveries</span>
+            </div>
+            <div class="tab-row">
+              <button class="tab-btn active" data-tab="active">Active<span class="pill-count"
+                  id="activeCount">9</span></button>
+              <button class="tab-btn" data-tab="alerts">Alerts<span class="pill-count">4</span></button>
+            </div>
+
+            <div class="list-scroll" id="pane-active">
+              <div class="delivery-row selected" data-id="DSP-4821" data-customer="Maya Chen" data-merchant="Green Bowl"
+                data-courier="Alex Rivera" data-status="st-intransit" data-statuslabel="In Transit" data-eta="12 min"
+                data-distance="2.4 km" data-step="6" data-action="Contact Courier" data-mapx="430" data-mapy="340">
+                <div class="d-main">
+                  <div class="d-id">DSP-4821</div>
+                  <div class="d-route">Green Bowl → Maya Chen</div>
+                  <div class="d-meta">Courier: Alex Rivera</div>
+                </div>
+                <div class="d-right">
+                  <span class="status-pill st-intransit"><span class="status-dot"></span>In Transit</span>
+                  <span class="d-eta">12 min</span>
+                </div>
+              </div>
+
+              <div class="delivery-row" data-id="DSP-4796" data-customer="Priya Nair" data-merchant="Sunrise Bakery"
+                data-courier="Jordan Blake" data-status="st-pickup" data-statuslabel="Pickup" data-eta="21 min"
+                data-distance="3.8 km" data-step="5" data-action="Contact Courier" data-mapx="300" data-mapy="360">
+                <div class="d-main">
+                  <div class="d-id">DSP-4796</div>
+                  <div class="d-route">Sunrise Bakery → Priya Nair</div>
+                  <div class="d-meta">Courier: Jordan Blake</div>
+                </div>
+                <div class="d-right">
+                  <span class="status-pill st-pickup"><span class="status-dot"></span>Pickup</span>
+                  <span class="d-eta">21 min</span>
+                </div>
+              </div>
+
+              <div class="delivery-row" data-id="DSP-4788" data-customer="Daniel Osei" data-merchant="Basilico"
+                data-courier="Arjun Kumar" data-status="st-assigned" data-statuslabel="Assigned" data-eta="18 min"
+                data-distance="3.4 km" data-step="4" data-action="Contact Courier" data-mapx="600" data-mapy="300"
+                data-rating="4.9" data-sla="Pickup SLA exceeded by 7 min" data-scenario="investigation">
+                <div class="d-main">
+                  <div class="d-id">DSP-4788</div>
+                  <div class="d-route">Basilico → Daniel Osei</div>
+                  <div class="d-meta">Courier: Arjun Kumar</div>
+                </div>
+                <div class="d-right">
+                  <span class="status-pill st-assigned"><span class="status-dot"></span>Assigned</span>
+                  <span class="d-eta">18 min</span>
+                </div>
+              </div>
+
+              <div class="delivery-row" data-id="DSP-4779" data-customer="Wei Lin" data-merchant="Spice Route Kitchen"
+                data-courier="Omar Farouk" data-status="st-delayed" data-statuslabel="Delayed" data-eta="+9 min"
+                data-distance="1.6 km" data-step="6" data-action="Investigate Delay" data-mapx="650" data-mapy="420"
+                data-scenario="recovery">
+                <div class="d-main">
+                  <div class="d-id">DSP-4779</div>
+                  <div class="d-route">Spice Route Kitchen → Wei Lin</div>
+                  <div class="d-meta">Courier: Omar Farouk</div>
+                </div>
+                <div class="d-right">
+                  <span class="status-pill st-delayed"><span class="status-dot"></span>Delayed</span>
+                  <span class="d-eta">+9 min</span>
+                </div>
+              </div>
+
+              <div class="delivery-row" data-id="DSP-4771" data-customer="Fatima Sheikh" data-merchant="Kanan Grocers"
+                data-courier="—" data-status="st-ready" data-statuslabel="Ready" data-eta="Awaiting" data-distance="—"
+                data-step="3" data-action="Assign Courier">
+                <div class="d-main">
+                  <div class="d-id">DSP-4771</div>
+                  <div class="d-route">Kanan Grocers → Fatima Sheikh</div>
+                  <div class="d-meta">Awaiting assignment</div>
+                </div>
+                <div class="d-right">
+                  <span class="status-pill st-ready"><span class="status-dot"></span>Ready</span>
+                  <span class="d-eta">4 min wait</span>
+                </div>
+              </div>
+
+              <div class="delivery-row" data-id="DSP-4765" data-customer="Leo Martins" data-merchant="Noodle House"
+                data-courier="Nina Petrova" data-status="st-arriving" data-statuslabel="Arriving" data-eta="3 min"
+                data-distance="0.4 km" data-step="7" data-action="Contact Courier">
+                <div class="d-main">
+                  <div class="d-id">DSP-4765</div>
+                  <div class="d-route">Noodle House → Leo Martins</div>
+                  <div class="d-meta">Courier: Nina Petrova</div>
+                </div>
+                <div class="d-right">
+                  <span class="status-pill st-arriving"><span class="status-dot"></span>Arriving</span>
+                  <span class="d-eta">3 min</span>
+                </div>
+              </div>
+
+              <div class="delivery-row" data-id="DSP-4758" data-customer="Sara Kim" data-merchant="Blue Anchor Seafood"
+                data-courier="Marcus Webb" data-status="st-intransit" data-statuslabel="In Transit" data-eta="17 min"
+                data-distance="5.2 km" data-step="6" data-action="Contact Courier">
+                <div class="d-main">
+                  <div class="d-id">DSP-4758</div>
+                  <div class="d-route">Blue Anchor Seafood → Sara Kim</div>
+                  <div class="d-meta">Courier: Marcus Webb</div>
+                </div>
+                <div class="d-right">
+                  <span class="status-pill st-intransit"><span class="status-dot"></span>In Transit</span>
+                  <span class="d-eta">17 min</span>
+                </div>
+              </div>
+
+              <div class="delivery-row" data-id="DSP-4750" data-customer="Arjun Patel"
+                data-merchant="Copper Kettle Café" data-courier="—" data-status="st-preparing"
+                data-statuslabel="Preparing" data-eta="—" data-distance="—" data-step="2" data-action="View Order">
+                <div class="d-main">
+                  <div class="d-id">DSP-4750</div>
+                  <div class="d-route">Copper Kettle Café → Arjun Patel</div>
+                  <div class="d-meta">In kitchen</div>
+                </div>
+                <div class="d-right">
+                  <span class="status-pill st-preparing"><span class="status-dot"></span>Preparing</span>
+                  <span class="d-eta">6 min</span>
+                </div>
+              </div>
+
+              <div class="delivery-row" data-id="DSP-4744" data-customer="Nadia Costa" data-merchant="Green Bowl"
+                data-courier="—" data-status="st-pending" data-statuslabel="Pending" data-eta="—" data-distance="—"
+                data-step="1" data-action="View Order">
+                <div class="d-main">
+                  <div class="d-id">DSP-4744</div>
+                  <div class="d-route">Green Bowl → Nadia Costa</div>
+                  <div class="d-meta">Order received</div>
+                </div>
+                <div class="d-right">
+                  <span class="status-pill st-pending"><span class="status-dot"></span>Pending</span>
+                  <span class="d-eta">Just now</span>
+                </div>
+              </div>
+
+              <div class="empty-state" id="emptyState" style="display:none">
+                <svg class="icon" viewBox="0 0 24 24" style="width:24px;height:24px">
+                  <circle cx="11" cy="11" r="7" />
+                  <path d="M20 20l-3.5-3.5" />
+                </svg>
+                <div class="es-title" id="emptyTitle">No matching deliveries</div>
+                <div class="es-sub" id="emptySub">Try a different search term or filter.</div>
+              </div>
+            </div>
+
+            <div class="list-scroll" id="pane-alerts" style="display:none">
+              <div class="alert-row">
+                <div class="alert-ico bad">
+                  <svg class="icon" viewBox="0 0 24 24" style="width:15px;height:15px">
+                    <path d="M12 9v4M12 17h.01" />
+                    <path
+                      d="M10.3 3.9L2.6 18a1.5 1.5 0 001.3 2.2h16.2a1.5 1.5 0 001.3-2.2L13.7 3.9a1.5 1.5 0 00-2.6 0z" />
+                  </svg>
+                </div>
+                <div>
+                  <div class="alert-text"><strong>DSP-4779 running late</strong> — courier Omar Farouk delayed near
+                    Riverside crossing, 9 min behind ETA.</div>
+                  <div class="alert-time">2 min ago</div>
+                </div>
+              </div>
+              <div class="alert-row">
+                <div class="alert-ico warn">
+                  <svg class="icon" viewBox="0 0 24 24" style="width:15px;height:15px">
+                    <circle cx="12" cy="12" r="9" />
+                    <path d="M12 7v5l3 3" />
+                  </svg>
+                </div>
+                <div>
+                  <div class="alert-text"><strong>Prep time exceeding SLA</strong> — Spice Route Kitchen averaging 22
+                    min vs. 15 min target.</div>
+                  <div class="alert-time">6 min ago</div>
+                </div>
+              </div>
+              <div class="alert-row">
+                <div class="alert-ico info">
+                  <svg class="icon" viewBox="0 0 24 24" style="width:15px;height:15px">
+                    <circle cx="12" cy="7" r="3" />
+                    <path d="M5 21c0-4 3-6.5 7-6.5s7 2.5 7 6.5" />
+                  </svg>
+                </div>
+                <div>
+                  <div class="alert-text"><strong>Nina Petrova came online</strong> — now available in Harbor Park zone.
+                  </div>
+                  <div class="alert-time">11 min ago</div>
+                </div>
+              </div>
+              <div class="alert-row">
+                <div class="alert-ico warn">
+                  <svg class="icon" viewBox="0 0 24 24" style="width:15px;height:15px">
+                    <path d="M4 9l1.5-5h13L20 9" />
+                    <path d="M4 9h16v10H4z" />
+                  </svg>
+                </div>
+                <div>
+                  <div class="alert-text"><strong>Kanan Grocers</strong> has 3 orders waiting over 4 minutes for courier
+                    assignment.</div>
+                  <div class="alert-time">14 min ago</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- ---- SELECTED DELIVERY DETAIL ---- -->
+        <section class="panel detail-panel" id="detail-panel">
+          <div class="detail-col info">
+            <div class="detail-id-row">
+              <span class="detail-id" id="dp-id">DSP-4821</span>
+              <span class="status-pill st-intransit" id="dp-status-pill"><span class="status-dot"></span><span
+                  id="dp-status-text">In Transit</span></span>
+            </div>
+            <div class="detail-route" id="dp-route">Green Bowl <span class="arrow">→</span> Maya Chen</div>
+            <div class="detail-sub">Courier: <button class="detail-link" id="dp-courier-link">Alex Rivera</button><span
+                id="dp-courier" hidden>Alex Rivera</span></div>
+            <div class="detail-grid2">
+              <div>
+                <div class="dg-label">ETA</div>
+                <div class="dg-value" id="dp-eta">12 min</div>
+              </div>
+              <div>
+                <div class="dg-label">Distance</div>
+                <div class="dg-value" id="dp-distance">2.4 km</div>
+              </div>
+            </div>
+            <div class="detail-sub">Courier rating: <strong id="dp-rating">4.8</strong> <span
+                style="color:var(--amber)">★</span></div>
+          </div>
+
+          <div class="detail-col timeline">
+            <div class="investigation-heading"><span>Delivery Timeline</span><span id="dp-last-event">Last update
+                09:07</span></div>
+            <div class="timeline-track" id="dp-timeline">
+              <div class="tl-step" data-step="1">
+                <div class="tl-line"></div>
+                <div class="tl-dot"></div>
+                <div class="tl-time">08:42</div>
+                <div class="tl-label">Order received</div>
+              </div>
+              <div class="tl-step" data-step="2">
+                <div class="tl-line"></div>
+                <div class="tl-dot"></div>
+                <div class="tl-time">08:48</div>
+                <div class="tl-label">Merchant preparing</div>
+              </div>
+              <div class="tl-step" data-step="3">
+                <div class="tl-line"></div>
+                <div class="tl-dot"></div>
+                <div class="tl-time">08:55</div>
+                <div class="tl-label">Ready for pickup</div>
+              </div>
+              <div class="tl-step" data-step="4">
+                <div class="tl-line"></div>
+                <div class="tl-dot"></div>
+                <div class="tl-time">09:02</div>
+                <div class="tl-label">Courier assigned</div>
+              </div>
+              <div class="tl-step" data-step="5">
+                <div class="tl-line"></div>
+                <div class="tl-dot"></div>
+                <div class="tl-time">09:07</div>
+                <div class="tl-label">Approaching pickup</div>
+              </div>
+              <div class="tl-step" data-step="6">
+                <div class="tl-line"></div>
+                <div class="tl-dot"></div>
+                <div class="tl-time">09:15</div>
+                <div class="tl-label">Pickup delayed</div>
+              </div>
+              <div class="tl-step" data-step="7">
+                <div class="tl-line"></div>
+                <div class="tl-dot"></div>
+                <div class="tl-time">09:24</div>
+                <div class="tl-label">Arriving</div>
+              </div>
+              <div class="tl-step" data-step="8">
+                <div class="tl-line"></div>
+                <div class="tl-dot"></div>
+                <div class="tl-time">—</div>
+                <div class="tl-label">Delivered</div>
+              </div>
+            </div>
+            <div class="signals">
+              <div class="investigation-heading"><span>Operational Signals</span><span>Live assessment</span></div>
+              <div class="signal-row warn"><span class="signal-mark">⚠</span><span id="dp-sla">Pickup SLA exceeded by 7
+                  min</span></div>
+              <div class="signal-row"><span class="signal-mark">✓</span><span>Courier online</span></div>
+              <div class="signal-row"><span class="signal-mark">✓</span><span>Customer confirmed address</span></div>
+              <div class="signal-row warn"><span class="signal-mark">⚠</span><span>Merchant preparation delayed</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="detail-col action">
+            <div class="investigation-heading"><span>Actions</span><span>Dispatcher tools</span></div>
+            <div class="action-stack">
+              <button class="btn-primary" id="dp-action">
+                <svg class="icon" viewBox="0 0 24 24" style="width:15px;height:15px;stroke:#1A1200">
+                  <path d="M4 4h5l2 5-2.5 1.5a11 11 0 005 5L15 13l5 2v5a2 2 0 01-2 2C9.5 22 2 14.5 2 6a2 2 0 012-2z" />
+                </svg>
+                <span id="dp-action-text">Contact Courier</span>
+              </button>
+              <button class="btn-secondary" id="btnViewTrip"><svg class="icon" viewBox="0 0 24 24"
+                  style="width:14px;height:14px">
+                  <path d="M4 5h16v14H4z" />
+                  <path d="M7 9h10M7 13h7" />
+                </svg>Contact Merchant</button>
+              <button class="btn-secondary" id="btnEscalate"><svg class="icon" viewBox="0 0 24 24"
+                  style="width:14px;height:14px">
+                  <path d="M12 3v12M7 8l5-5 5 5" />
+                  <path d="M5 21h14" />
+                </svg>Escalate Delivery</button>
+            </div>
+          </div>
+        </section>
+
+        <!-- ---- COURIER FLEET VIEW ---- -->
+        <section class="courier-view" id="courierView">
+          <div class="courier-head">
+            <div>
+              <div class="view-kicker">Fleet operations</div>
+              <div class="view-title">Courier Fleet</div>
+              <div class="view-subtitle">Monitor availability, live location, and delivery performance across Central
+                Grid.</div>
+            </div>
+            <div class="courier-toolbar">
+              <input class="courier-search" id="courierSearch" type="search" placeholder="Search courier or vehicle"
+                aria-label="Search courier or vehicle" />
+              <button class="chip on" id="fleetFilter">All couriers</button>
+            </div>
+          </div>
+
+          <div class="fleet-summary">
+            <div class="fleet-stat">
+              <div class="fleet-stat-top"><span class="fleet-stat-dot"></span>Online</div><span
+                class="fleet-stat-value">42</span>
+              <div class="fleet-stat-sub">Ready to accept work</div>
+            </div>
+            <div class="fleet-stat">
+              <div class="fleet-stat-top"><span class="fleet-stat-dot"></span>Available</div><span
+                class="fleet-stat-value">34</span>
+              <div class="fleet-stat-sub">Idle and unassigned</div>
+            </div>
+            <div class="fleet-stat delivery">
+              <div class="fleet-stat-top"><span class="fleet-stat-dot"></span>On Delivery</div><span
+                class="fleet-stat-value">8</span>
+              <div class="fleet-stat-sub">Currently carrying orders</div>
+            </div>
+            <div class="fleet-stat offline">
+              <div class="fleet-stat-top"><span class="fleet-stat-dot"></span>Offline</div><span
+                class="fleet-stat-value">5</span>
+              <div class="fleet-stat-sub">Checked out of fleet</div>
+            </div>
+            <div class="fleet-stat delayed">
+              <div class="fleet-stat-top"><span class="fleet-stat-dot"></span>Delayed</div><span
+                class="fleet-stat-value">3</span>
+              <div class="fleet-stat-sub">Needs dispatcher attention</div>
+            </div>
+          </div>
+
+          <div class="fleet-layout">
+            <div class="fleet-panel">
+              <div class="fleet-panel-head"><span class="fleet-panel-title">Active courier roster</span><span
+                  class="fleet-panel-meta" id="courierCount">4 visible</span></div>
+              <div class="courier-grid" id="courierGrid">
+                <article class="courier-card selected" tabindex="0" role="button" data-courier="Arjun Kumar"
+                  data-status="Online" data-statusclass="online" data-vehicle="Van · DL-08-AX-2184"
+                  data-location="Basilico · Central Grid" data-rating="4.9" data-deliveries="127" data-ontime="96%"
+                  data-zone="Central Grid">
+                  <div class="vehicle-thumb van-thumb van"><svg viewBox="0 0 80 56" aria-hidden="true">
+                      <path d="M8 17h43l12 10h9v17H8z" fill="none" stroke="currentColor" stroke-width="2" />
+                      <path d="M51 18v10h12M17 44a6 6 0 1012 0M57 44a6 6 0 1012 0" fill="none" stroke="currentColor"
+                        stroke-width="2" />
+                      <path d="M13 23h25" stroke="currentColor" stroke-width="2" />
+                    </svg></div>
+                  <div>
+                    <div class="courier-card-top">
+                      <div class="courier-name">ARJUN KUMAR</div><span class="courier-status online">Online</span>
+                    </div>
+                    <div class="courier-vehicle">Van · DL-08-AX-2184</div>
+                    <div class="courier-location">● At Basilico · Central Grid</div>
+                    <div class="courier-metrics">
+                      <div><span class="courier-metric-label">Rating</span><span class="courier-metric-value rating">4.9
+                          ★</span></div>
+                      <div><span class="courier-metric-label">Deliveries</span><span
+                          class="courier-metric-value">127</span></div>
+                      <div><span class="courier-metric-label">On-time</span><span
+                          class="courier-metric-value">96%</span></div>
+                    </div>
+                  </div>
+                </article>
+                <article class="courier-card" tabindex="0" role="button" data-courier="Maya Patel"
+                  data-status="On Delivery" data-statusclass="delivery" data-vehicle="Bike · TN-09-BK-4421"
+                  data-location="Harbor Park · Route 06" data-rating="4.8" data-deliveries="89" data-ontime="94%"
+                  data-zone="Harbor Park">
+                  <div class="vehicle-thumb bike-thumb bike"><svg viewBox="0 0 80 56" aria-hidden="true">
+                      <circle cx="20" cy="40" r="9" fill="none" stroke="currentColor" stroke-width="2" />
+                      <circle cx="61" cy="40" r="9" fill="none" stroke="currentColor" stroke-width="2" />
+                      <path d="M20 40l15-22 10 22m-10-22h12l14 22M29 40h32M35 18h-7" fill="none" stroke="currentColor"
+                        stroke-width="2" />
+                    </svg></div>
+                  <div>
+                    <div class="courier-card-top">
+                      <div class="courier-name">MAYA PATEL</div><span class="courier-status delivery">On Delivery</span>
+                    </div>
+                    <div class="courier-vehicle">Bike · TN-09-BK-4421</div>
+                    <div class="courier-location">● Harbor Park · Route 06</div>
+                    <div class="courier-metrics">
+                      <div><span class="courier-metric-label">Rating</span><span class="courier-metric-value rating">4.8
+                          ★</span></div>
+                      <div><span class="courier-metric-label">Deliveries</span><span
+                          class="courier-metric-value">89</span></div>
+                      <div><span class="courier-metric-label">On-time</span><span
+                          class="courier-metric-value">94%</span></div>
+                    </div>
+                  </div>
+                </article>
+                <article class="courier-card" tabindex="0" role="button" data-courier="Omar Farouk"
+                  data-status="Delayed" data-statusclass="delayed" data-vehicle="Van · KA-03-MN-7812"
+                  data-location="Riverside crossing · DSP-4779" data-rating="4.6" data-deliveries="74" data-ontime="88%"
+                  data-zone="Riverside">
+                  <div class="vehicle-thumb van-thumb van"><svg viewBox="0 0 80 56" aria-hidden="true">
+                      <path d="M8 17h43l12 10h9v17H8z" fill="none" stroke="currentColor" stroke-width="2" />
+                      <path d="M51 18v10h12M17 44a6 6 0 1012 0M57 44a6 6 0 1012 0" fill="none" stroke="currentColor"
+                        stroke-width="2" />
+                    </svg></div>
+                  <div>
+                    <div class="courier-card-top">
+                      <div class="courier-name">OMAR FAROUK</div><span class="courier-status delayed">Delayed</span>
+                    </div>
+                    <div class="courier-vehicle">Van · KA-03-MN-7812</div>
+                    <div class="courier-location">● Riverside crossing · DSP-4779</div>
+                    <div class="courier-metrics">
+                      <div><span class="courier-metric-label">Rating</span><span class="courier-metric-value rating">4.6
+                          ★</span></div>
+                      <div><span class="courier-metric-label">Deliveries</span><span
+                          class="courier-metric-value">74</span></div>
+                      <div><span class="courier-metric-label">On-time</span><span
+                          class="courier-metric-value">88%</span></div>
+                    </div>
+                  </div>
+                </article>
+                <article class="courier-card" tabindex="0" role="button" data-courier="Nina Petrova"
+                  data-status="Online" data-statusclass="online" data-vehicle="Bike · MH-12-QZ-1022"
+                  data-location="Harbor Park · Available" data-rating="4.9" data-deliveries="112" data-ontime="97%"
+                  data-zone="Harbor Park">
+                  <div class="vehicle-thumb bike-thumb bike"><svg viewBox="0 0 80 56" aria-hidden="true">
+                      <circle cx="20" cy="40" r="9" fill="none" stroke="currentColor" stroke-width="2" />
+                      <circle cx="61" cy="40" r="9" fill="none" stroke="currentColor" stroke-width="2" />
+                      <path d="M20 40l15-22 10 22m-10-22h12l14 22M29 40h32" fill="none" stroke="currentColor"
+                        stroke-width="2" />
+                    </svg></div>
+                  <div>
+                    <div class="courier-card-top">
+                      <div class="courier-name">NINA PETROVA</div><span class="courier-status online">Online</span>
+                    </div>
+                    <div class="courier-vehicle">Bike · MH-12-QZ-1022</div>
+                    <div class="courier-location">● Harbor Park · Available</div>
+                    <div class="courier-metrics">
+                      <div><span class="courier-metric-label">Rating</span><span class="courier-metric-value rating">4.9
+                          ★</span></div>
+                      <div><span class="courier-metric-label">Deliveries</span><span
+                          class="courier-metric-value">112</span></div>
+                      <div><span class="courier-metric-label">On-time</span><span
+                          class="courier-metric-value">97%</span></div>
+                    </div>
+                  </div>
+                </article>
+              </div>
+            </div>
+
+            <aside class="fleet-panel profile-panel" id="courierProfile">
+              <div class="fleet-panel-head"><span class="fleet-panel-title">Courier profile</span><span
+                  class="fleet-panel-meta">Selected</span></div>
+              <div class="profile-content">
+                <div class="profile-identity">
+                  <div class="profile-avatar" id="profileAvatar">AK</div>
+                  <div>
+                    <div class="profile-name" id="profileName">Arjun Kumar</div>
+                    <div class="profile-role" id="profileRole">Online · Central Grid</div>
+                  </div>
+                </div>
+                <div class="profile-location" id="profileLocation">● Current location · Basilico</div>
+                <div class="profile-grid">
+                  <div>
+                    <div class="profile-label">Vehicle</div>
+                    <div class="profile-value" id="profileVehicle">Van · DL-08-AX-2184</div>
+                  </div>
+                  <div>
+                    <div class="profile-label">Rating</div>
+                    <div class="profile-value" id="profileRating">4.9 ★</div>
+                  </div>
+                  <div>
+                    <div class="profile-label">Deliveries</div>
+                    <div class="profile-value" id="profileDeliveries">127</div>
+                  </div>
+                  <div>
+                    <div class="profile-label">On-time</div>
+                    <div class="profile-value good" id="profileOntime">96%</div>
+                  </div>
+                </div>
+                <div class="profile-actions"><button class="btn-primary" id="profileContact">Contact
+                    Courier</button><button class="btn-secondary" id="profileAssign">View active delivery</button></div>
+              </div>
+            </aside>
+          </div>
+        </section>
+
+        <!-- ---- DELIVERY ORDER MANAGEMENT VIEW ---- -->
+        <section class="delivery-view" id="deliveryView">
+          <div class="delivery-head">
+            <div>
+              <div class="view-kicker">Order management</div>
+              <div class="view-title">Deliveries</div>
+              <div class="view-subtitle">Track every order from kitchen handoff to doorstep, with investigation one
+                click away.</div>
+            </div>
+            <div class="delivery-toolbar">
+              <input class="delivery-search" id="deliverySearch" type="search"
+                placeholder="Search order, merchant, customer" aria-label="Search deliveries" />
+            </div>
+          </div>
+
+          <div class="kpi-row" id="deliveryKpis">
+            <div class="kpi-card">
+              <div class="kpi-top"><span class="kpi-label">Total Today</span><span class="kpi-swatch"
+                  style="background:var(--blue)"></span></div>
+              <div class="kpi-value">162</div>
+              <div class="kpi-sub">Orders placed since 00:00</div>
+            </div>
+            <div class="kpi-card">
+              <div class="kpi-top"><span class="kpi-label">Active</span><span class="kpi-swatch"
+                  style="background:var(--amber)"></span></div>
+              <div class="kpi-value">34</div>
+              <div class="kpi-sub">Preparing through arriving</div>
+            </div>
+            <div class="kpi-card">
+              <div class="kpi-top"><span class="kpi-label">In Transit</span><span class="kpi-swatch"
+                  style="background:var(--teal)"></span></div>
+              <div class="kpi-value">19</div>
+              <div class="kpi-sub">Avg ETA 14 min</div>
+            </div>
+            <div class="kpi-card warn">
+              <div class="kpi-top"><span class="kpi-label">Delayed</span><span class="kpi-swatch"
+                  style="background:var(--bad)"></span></div>
+              <div class="kpi-value">3</div>
+              <div class="kpi-sub">Needs attention</div>
+            </div>
+            <div class="kpi-card">
+              <div class="kpi-top"><span class="kpi-label">Delivered</span><span class="kpi-swatch"
+                  style="background:var(--good)"></span></div>
+              <div class="kpi-value">128</div>
+              <div class="kpi-sub">98.1% on-time</div>
+            </div>
+          </div>
+
+          <div class="delivery-filters" id="deliveryFilters">
+            <button class="delivery-filter active" data-delivery-filter="all">All</button>
+            <button class="delivery-filter" data-delivery-filter="st-preparing">Preparing</button>
+            <button class="delivery-filter" data-delivery-filter="st-ready">Ready</button>
+            <button class="delivery-filter" data-delivery-filter="st-assigned">Assigned</button>
+            <button class="delivery-filter" data-delivery-filter="st-intransit">In Transit</button>
+            <button class="delivery-filter" data-delivery-filter="st-delayed">Delayed</button>
+            <button class="delivery-filter" data-delivery-filter="st-delivered">Delivered</button>
+          </div>
+
+          <div class="orders-panel">
+            <div class="orders-panel-head"><span class="orders-panel-title">Order queue</span><span
+                class="orders-panel-meta" id="deliveryCount">3 orders</span></div>
+            <div class="orders-table-wrap">
+              <table class="orders-table">
+                <thead>
+                  <tr>
+                    <th>Order</th>
+                    <th>Merchant</th>
+                    <th>Customer</th>
+                    <th>Courier</th>
+                    <th>Status</th>
+                    <th>ETA</th>
+                    <th>Distance</th>
+                    <th>Updated</th>
+                  </tr>
+                </thead>
+                <tbody id="deliveryTableBody">
+                  <tr class="delivery-table-row selected" data-order-id="DSP-4821" data-status="st-intransit">
+                    <td><span class="order-id">DSP-4821</span></td>
+                    <td><button class="table-link merchant-link" data-merchant-link="Green Bowl">Green Bowl</button>
+                    </td>
+                    <td>Maya Chen</td>
+                    <td>Arjun</td>
+                    <td><span class="status-pill st-intransit"><span class="status-dot"></span>In Transit</span></td>
+                    <td><span class="order-eta">12m</span></td>
+                    <td class="order-muted">2.4 km</td>
+                    <td class="order-muted">09:07</td>
+                  </tr>
+                  <tr class="delivery-table-row" data-order-id="DSP-4796" data-status="st-pickup">
+                    <td><span class="order-id">DSP-4796</span></td>
+                    <td><button class="table-link merchant-link" data-merchant-link="Sunrise Bakery">Sunrise
+                        Bakery</button></td>
+                    <td>Priya Nair</td>
+                    <td class="order-muted">—</td>
+                    <td><span class="status-pill st-pickup"><span class="status-dot"></span>Pickup</span></td>
+                    <td><span class="order-eta">8m</span></td>
+                    <td class="order-muted">1.1 km</td>
+                    <td class="order-muted">08:58</td>
+                  </tr>
+                  <tr class="delivery-table-row" data-order-id="DSP-4779" data-status="st-delayed">
+                    <td><span class="order-id">DSP-4779</span></td>
+                    <td><button class="table-link merchant-link" data-merchant-link="Spice Route Kitchen">Spice
+                        Route</button></td>
+                    <td>Wei Lin</td>
+                    <td>Maya</td>
+                    <td><span class="status-pill st-delayed"><span class="status-dot"></span>Delayed</span></td>
+                    <td><span class="order-eta">24m</span></td>
+                    <td class="order-muted">4.6 km</td>
+                    <td class="order-muted">09:15</td>
+                  </tr>
+                  <tr class="delivery-table-row" data-order-id="DSP-4788" data-status="st-assigned">
+                    <td><span class="order-id">DSP-4788</span></td>
+                    <td><button class="table-link merchant-link" data-merchant-link="Basilico">Basilico</button></td>
+                    <td>Daniel Osei</td>
+                    <td>Arjun</td>
+                    <td><span class="status-pill st-assigned"><span class="status-dot"></span>Assigned</span></td>
+                    <td><span class="order-eta">18m</span></td>
+                    <td class="order-muted">3.2 km</td>
+                    <td class="order-muted">09:03</td>
+                  </tr>
+                  <tr class="delivery-table-row" data-order-id="DSP-4765" data-status="st-arriving">
+                    <td><span class="order-id">DSP-4765</span></td>
+                    <td><button class="table-link merchant-link" data-merchant-link="Noodle House">Noodle House</button>
+                    </td>
+                    <td>Leo Martins</td>
+                    <td>Nina</td>
+                    <td><span class="status-pill st-arriving"><span class="status-dot"></span>Arriving</span></td>
+                    <td><span class="order-eta">3m</span></td>
+                    <td class="order-muted">0.4 km</td>
+                    <td class="order-muted">09:11</td>
+                  </tr>
+                  <tr class="delivery-table-row" data-order-id="DSP-4750" data-status="st-preparing">
+                    <td><span class="order-id">DSP-4750</span></td>
+                    <td><button class="table-link merchant-link" data-merchant-link="Copper Kettle Café">Copper
+                        Kettle</button></td>
+                    <td>Arjun Patel</td>
+                    <td class="order-muted">—</td>
+                    <td><span class="status-pill st-preparing"><span class="status-dot"></span>Preparing</span></td>
+                    <td><span class="order-eta">6m</span></td>
+                    <td class="order-muted">1.8 km</td>
+                    <td class="order-muted">08:56</td>
+                  </tr>
+                </tbody>
+              </table>
+              <div class="delivery-empty" id="deliveryEmpty">No deliveries match this filter.</div>
+            </div>
+          </div>
+        </section>
+
+        <!-- ---- MERCHANT INTELLIGENCE VIEW ---- -->
+        <section class="merchant-view" id="merchantView">
+          <div class="merchant-head">
+            <div>
+              <div class="view-kicker">Business intelligence</div>
+              <div class="view-title">Merchants</div>
+              <div class="merchant-head-note">Understand preparation health and service quality across the partner
+                network.</div>
+            </div>
+            <div class="merchant-updated">Updated 2 min ago · Central Grid</div>
+          </div>
+
+          <div class="merchant-layout">
+            <div class="merchant-panel">
+              <div class="merchant-panel-head"><span class="merchant-panel-title">Merchant operating cards</span><span
+                  class="merchant-panel-meta">6 tracked</span></div>
+              <div class="merchant-cards">
+                <article class="merchant-card selected" tabindex="0" role="button" data-merchant="Green Bowl"
+                  data-orders="84" data-prep="11m" data-ontime="96%" data-active="7" data-cancel="1.8%" data-sla="94%"
+                  data-delayed="2" data-type="Fast casual">
+                  <div class="merchant-card-top">
+                    <div>
+                      <div class="merchant-name">Green Bowl</div>
+                      <div class="merchant-type">Fast casual · North Yard</div>
+                    </div><span class="merchant-health">Healthy</span>
+                  </div>
+                  <div class="merchant-card-stats">
+                    <div><span class="merchant-stat-label">Orders today</span><span
+                        class="merchant-stat-value">84</span></div>
+                    <div><span class="merchant-stat-label">Avg preparation</span><span
+                        class="merchant-stat-value">11m</span></div>
+                    <div><span class="merchant-stat-label">On-time rate</span><span
+                        class="merchant-stat-value good">96%</span></div>
+                    <div><span class="merchant-stat-label">Active orders</span><span
+                        class="merchant-stat-value">7</span></div>
+                  </div>
+                </article>
+                <article class="merchant-card" tabindex="0" role="button" data-merchant="Sunrise Bakery"
+                  data-orders="52" data-prep="8m" data-ontime="98%" data-active="4" data-cancel="0.9%" data-sla="98%"
+                  data-delayed="0" data-type="Bakery · Riverside">
+                  <div class="merchant-card-top">
+                    <div>
+                      <div class="merchant-name">Sunrise Bakery</div>
+                      <div class="merchant-type">Bakery · Riverside</div>
+                    </div><span class="merchant-health">Healthy</span>
+                  </div>
+                  <div class="merchant-card-stats">
+                    <div><span class="merchant-stat-label">Orders today</span><span
+                        class="merchant-stat-value">52</span></div>
+                    <div><span class="merchant-stat-label">Avg preparation</span><span
+                        class="merchant-stat-value">8m</span></div>
+                    <div><span class="merchant-stat-label">On-time rate</span><span
+                        class="merchant-stat-value good">98%</span></div>
+                    <div><span class="merchant-stat-label">Active orders</span><span
+                        class="merchant-stat-value">4</span></div>
+                  </div>
+                </article>
+                <article class="merchant-card" tabindex="0" role="button" data-merchant="Spice Route Kitchen"
+                  data-orders="61" data-prep="22m" data-ontime="81%" data-active="9" data-cancel="4.2%" data-sla="72%"
+                  data-delayed="5" data-type="Asian fusion · Riverside">
+                  <div class="merchant-card-top">
+                    <div>
+                      <div class="merchant-name">Spice Route Kitchen</div>
+                      <div class="merchant-type">Asian fusion · Riverside</div>
+                    </div><span class="merchant-health" style="background:var(--bad-dim);color:var(--bad)">At
+                      risk</span>
+                  </div>
+                  <div class="merchant-card-stats">
+                    <div><span class="merchant-stat-label">Orders today</span><span
+                        class="merchant-stat-value">61</span></div>
+                    <div><span class="merchant-stat-label">Avg preparation</span><span
+                        class="merchant-stat-value warn">22m</span></div>
+                    <div><span class="merchant-stat-label">On-time rate</span><span
+                        class="merchant-stat-value warn">81%</span></div>
+                    <div><span class="merchant-stat-label">Active orders</span><span
+                        class="merchant-stat-value">9</span></div>
+                  </div>
+                </article>
+                <article class="merchant-card" tabindex="0" role="button" data-merchant="Basilico"
+                  data-orders="47" data-prep="14m" data-ontime="93%" data-active="5" data-cancel="2.1%" data-sla="91%"
+                  data-delayed="1" data-type="Italian · Central Grid">
+                  <div class="merchant-card-top">
+                    <div>
+                      <div class="merchant-name">Basilico</div>
+                      <div class="merchant-type">Italian · Central Grid</div>
+                    </div><span class="merchant-health">Healthy</span>
+                  </div>
+                  <div class="merchant-card-stats">
+                    <div><span class="merchant-stat-label">Orders today</span><span
+                        class="merchant-stat-value">47</span></div>
+                    <div><span class="merchant-stat-label">Avg preparation</span><span
+                        class="merchant-stat-value">14m</span></div>
+                    <div><span class="merchant-stat-label">On-time rate</span><span
+                        class="merchant-stat-value good">93%</span></div>
+                    <div><span class="merchant-stat-label">Active orders</span><span
+                        class="merchant-stat-value">5</span></div>
+                  </div>
+                </article>
+                <article class="merchant-card" tabindex="0" role="button" data-merchant="Kanan Grocers"
+                  data-orders="38" data-prep="6m" data-ontime="97%" data-active="3" data-cancel="0.5%" data-sla="97%"
+                  data-delayed="0" data-type="Grocery · Central Grid">
+                  <div class="merchant-card-top">
+                    <div>
+                      <div class="merchant-name">Kanan Grocers</div>
+                      <div class="merchant-type">Grocery · Central Grid</div>
+                    </div><span class="merchant-health">Healthy</span>
+                  </div>
+                  <div class="merchant-card-stats">
+                    <div><span class="merchant-stat-label">Orders today</span><span
+                        class="merchant-stat-value">38</span></div>
+                    <div><span class="merchant-stat-label">Avg preparation</span><span
+                        class="merchant-stat-value">6m</span></div>
+                    <div><span class="merchant-stat-label">On-time rate</span><span
+                        class="merchant-stat-value good">97%</span></div>
+                    <div><span class="merchant-stat-label">Active orders</span><span
+                        class="merchant-stat-value">3</span></div>
+                  </div>
+                </article>
+                <article class="merchant-card" tabindex="0" role="button" data-merchant="Noodle House"
+                  data-orders="55" data-prep="13m" data-ontime="90%" data-active="6" data-cancel="2.6%" data-sla="88%"
+                  data-delayed="2" data-type="Asian · Harbor Park">
+                  <div class="merchant-card-top">
+                    <div>
+                      <div class="merchant-name">Noodle House</div>
+                      <div class="merchant-type">Asian · Harbor Park</div>
+                    </div><span class="merchant-health">Healthy</span>
+                  </div>
+                  <div class="merchant-card-stats">
+                    <div><span class="merchant-stat-label">Orders today</span><span
+                        class="merchant-stat-value">55</span></div>
+                    <div><span class="merchant-stat-label">Avg preparation</span><span
+                        class="merchant-stat-value">13m</span></div>
+                    <div><span class="merchant-stat-label">On-time rate</span><span
+                        class="merchant-stat-value good">90%</span></div>
+                    <div><span class="merchant-stat-label">Active orders</span><span
+                        class="merchant-stat-value">6</span></div>
+                  </div>
+                </article>
+              </div>
+            </div>
+
+            <aside class="merchant-panel">
+              <div class="merchant-panel-head"><span class="merchant-panel-title">Merchant Performance</span><span
+                  class="merchant-panel-meta">Selected</span></div>
+              <div class="merchant-detail">
+                <div class="merchant-detail-identity">
+                  <div class="merchant-avatar" id="merchantAvatar">GB</div>
+                  <div>
+                    <div class="merchant-detail-name" id="merchantDetailName">Green Bowl</div>
+                    <div class="merchant-detail-sub" id="merchantDetailSub">Fast casual · North Yard</div>
+                  </div>
+                </div>
+                <div class="performance-grid">
+                  <div class="performance-metric"><span class="performance-metric-label">Average preparation</span><span
+                      class="performance-metric-value" id="merchantPrep">11m</span></div>
+                  <div class="performance-metric"><span class="performance-metric-label">Orders today</span><span
+                      class="performance-metric-value" id="merchantOrders">84</span></div>
+                  <div class="performance-metric"><span class="performance-metric-label">Cancellation rate</span><span
+                      class="performance-metric-value good" id="merchantCancel">1.8%</span></div>
+                  <div class="performance-metric"><span class="performance-metric-label">Delayed orders</span><span
+                      class="performance-metric-value warn" id="merchantDelayed">2</span></div>
+                </div>
+                <div class="performance-bars">
+                  <div>
+                    <div class="performance-bar-head"><span>SLA compliance</span><strong id="merchantSla">94%</strong>
+                    </div>
+                    <div class="performance-bar-track">
+                      <div class="performance-bar-fill" id="merchantSlaBar" style="width:94%"></div>
+                    </div>
+                  </div>
+                  <div>
+                    <div class="performance-bar-head"><span>On-time rate</span><strong id="merchantOntime">96%</strong>
+                    </div>
+                    <div class="performance-bar-track">
+                      <div class="performance-bar-fill" id="merchantOntimeBar" style="width:96%"></div>
+                    </div>
+                  </div>
+                </div>
+                <div class="merchant-detail-actions"><button class="btn-secondary merchant-detail-action"
+                    id="merchantOrdersAction">View active
+                    orders</button><button class="btn-secondary merchant-detail-action" id="merchantReportsAction">View
+                    network reports</button></div>
+              </div>
+            </aside>
+          </div>
+        </section>
+
+        <!-- ---- REPORTS / ANALYTICS VIEW ---- -->
+        <section class="reports-view" id="reportsView">
+          <div class="reports-head">
+            <div>
+              <div class="reports-kicker">Dispatch intelligence · portfolio data</div>
+              <div class="reports-title">Performance Overview</div>
+              <div class="reports-subtitle">A designed operating readout for Central Grid, based on the selected
+                reporting window.</div>
+            </div>
+            <div class="reports-controls"><span class="demo-badge">Demo dataset · not live</span><select
+                class="range-select" id="reportRange" aria-label="Reporting range">
+                <option>Today</option>
+                <option>Yesterday</option>
+                <option>Last 7 days</option>
+              </select></div>
+          </div>
+
+          <div class="report-kpis">
+            <div class="report-kpi"><span class="report-kpi-label">Completed</span><span
+                class="report-kpi-value">128</span><span class="report-kpi-note">↑ 12% vs yesterday</span></div>
+            <div class="report-kpi"><span class="report-kpi-label">On-time</span><span
+                class="report-kpi-value">94.6%</span><span class="report-kpi-note">↑ 2.1 pts vs yesterday</span></div>
+            <div class="report-kpi"><span class="report-kpi-label">Avg Delivery</span><span
+                class="report-kpi-value">11.4 min</span><span class="report-kpi-note">↓ 0.8 min vs yesterday</span>
+            </div>
+            <div class="report-kpi"><span class="report-kpi-label">Cancellation</span><span
+                class="report-kpi-value">3.2%</span><span class="report-kpi-note">Within 4% operating target</span>
+            </div>
+          </div>
+
+          <div class="report-grid">
+            <div class="report-panel">
+              <div class="report-panel-head"><span class="report-panel-title">Deliveries over time</span><span
+                  class="report-panel-meta">Hourly volume</span></div>
+              <div class="chart-area"><svg viewBox="0 0 680 190" preserveAspectRatio="none" role="img"
+                  aria-label="Deliveries over time line chart">
+                  <line class="chart-grid-line" x1="24" y1="35" x2="660" y2="35" />
+                  <line class="chart-grid-line" x1="24" y1="85" x2="660" y2="85" />
+                  <line class="chart-grid-line" x1="24" y1="135" x2="660" y2="135" />
+                  <path class="chart-area-fill"
+                    d="M25 142 L85 126 L145 132 L205 104 L265 111 L325 75 L385 91 L445 51 L505 67 L565 38 L625 58 L660 45 L660 160 L25 160Z" />
+                  <path class="chart-line"
+                    d="M25 142 L85 126 L145 132 L205 104 L265 111 L325 75 L385 91 L445 51 L505 67 L565 38 L625 58 L660 45" />
+                  <circle class="chart-dot" cx="25" cy="142" r="4" />
+                  <circle class="chart-dot" cx="205" cy="104" r="4" />
+                  <circle class="chart-dot" cx="325" cy="75" r="4" />
+                  <circle class="chart-dot" cx="445" cy="51" r="4" />
+                  <circle class="chart-dot" cx="565" cy="38" r="4" /><text class="chart-axis" x="24"
+                    y="180">08:00</text><text class="chart-axis" x="182" y="180">11:00</text><text class="chart-axis"
+                    x="340" y="180">14:00</text><text class="chart-axis" x="498" y="180">17:00</text><text
+                    class="chart-axis" x="620" y="180">20:00</text>
+                </svg></div>
+            </div>
+            <div class="report-panel">
+              <div class="report-panel-head"><span class="report-panel-title">Deliveries by status</span><span
+                  class="report-panel-meta">128 total</span></div>
+              <div class="status-bars">
+                <div class="status-bar-row"><span class="status-bar-label">Delivered</span>
+                  <div class="status-bar-track">
+                    <div class="status-bar-fill" style="width:82%"></div>
+                  </div><span class="status-bar-value">105</span>
+                </div>
+                <div class="status-bar-row"><span class="status-bar-label">In transit</span>
+                  <div class="status-bar-track">
+                    <div class="status-bar-fill" style="width:42%"></div>
+                  </div><span class="status-bar-value">19</span>
+                </div>
+                <div class="status-bar-row"><span class="status-bar-label">Preparing</span>
+                  <div class="status-bar-track">
+                    <div class="status-bar-fill amber" style="width:18%"></div>
+                  </div><span class="status-bar-value">6</span>
+                </div>
+                <div class="status-bar-row"><span class="status-bar-label">Delayed</span>
+                  <div class="status-bar-track">
+                    <div class="status-bar-fill red" style="width:9%"></div>
+                  </div><span class="status-bar-value">3</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="report-grid">
+            <div class="report-panel">
+              <div class="report-panel-head"><span class="report-panel-title">Average delivery time</span><span
+                  class="report-panel-meta">Minutes · 7 day trend</span></div>
+              <div class="chart-area"><svg viewBox="0 0 680 190" preserveAspectRatio="none" role="img"
+                  aria-label="Average delivery time line chart">
+                  <line class="chart-grid-line" x1="24" y1="35" x2="660" y2="35" />
+                  <line class="chart-grid-line" x1="24" y1="85" x2="660" y2="85" />
+                  <line class="chart-grid-line" x1="24" y1="135" x2="660" y2="135" />
+                  <path class="chart-line" d="M25 54 L130 71 L235 64 L340 92 L445 88 L550 116 L660 125" />
+                  <circle class="chart-dot" cx="25" cy="54" r="4" />
+                  <circle class="chart-dot" cx="235" cy="64" r="4" />
+                  <circle class="chart-dot" cx="445" cy="88" r="4" />
+                  <circle class="chart-dot" cx="660" cy="125" r="4" /><text class="chart-axis" x="24"
+                    y="180">Mon</text><text class="chart-axis" x="125" y="180">Tue</text><text class="chart-axis"
+                    x="230" y="180">Wed</text><text class="chart-axis" x="335" y="180">Thu</text><text
+                    class="chart-axis" x="440" y="180">Fri</text><text class="chart-axis" x="545"
+                    y="180">Sat</text><text class="chart-axis" x="645" y="180">Sun</text>
+                </svg></div>
+            </div>
+            <div class="report-panel">
+              <div class="report-panel-head"><span class="report-panel-title">Courier performance</span><span
+                  class="report-panel-meta">On-time rate</span></div>
+              <div class="courier-ranking">
+                <div class="ranking-row"><span class="ranking-name">Nina Petrova</span><span
+                    class="ranking-score">97%</span><span class="ranking-orders">112 orders</span></div>
+                <div class="ranking-row"><span class="ranking-name">Arjun Kumar</span><span
+                    class="ranking-score">96%</span><span class="ranking-orders">127 orders</span></div>
+                <div class="ranking-row"><span class="ranking-name">Maya Patel</span><span
+                    class="ranking-score">94%</span><span class="ranking-orders">89 orders</span></div>
+                <div class="ranking-row"><span class="ranking-name">Omar Farouk</span><span
+                    class="ranking-score">88%</span><span class="ranking-orders">74 orders</span></div>
+              </div>
+            </div>
+          </div>
+
+          <div class="insights">
+            <div class="insights-title">Operational Insights</div>
+            <div class="insights-note"><strong>Volume:</strong> Delivery volume increased 18% compared with yesterday.
+            </div>
+            <div class="insights-note"><strong>Pickup delays:</strong> Delays are concentrated between 18:00–20:00.
+            </div>
+            <div class="insights-note"><strong>Coverage:</strong> Central Grid currently has the highest SLA compliance.
+            </div>
+          </div>
+        </section>
+
+        <!-- ---- OPERATIONS SETTINGS VIEW ---- -->
+        <section class="settings-view" id="settingsView">
+          <div class="settings-head">
+            <div class="view-kicker">Workspace configuration</div>
+            <div class="view-title">Operations Settings</div>
+            <div class="settings-subtitle">Control the signals and operating boundaries used by dispatchers.</div>
+          </div>
+          <div class="settings-layout">
+            <div class="settings-panel">
+              <div class="settings-panel-head">
+                <div class="settings-panel-title">Notifications</div>
+                <div class="settings-panel-sub">Choose which events reach the operations desk.</div>
+              </div>
+              <label class="settings-row"><span><span class="settings-label">Delayed delivery alerts</span><span
+                    class="settings-help">Notify when an order falls behind its ETA.</span></span><input class="toggle"
+                  type="checkbox" checked aria-label="Delayed delivery alerts" /></label>
+              <label class="settings-row"><span><span class="settings-label">SLA warnings</span><span
+                    class="settings-help">Flag pickup and delivery threshold breaches.</span></span><input
+                  class="toggle" type="checkbox" checked aria-label="SLA warnings" /></label>
+              <label class="settings-row"><span><span class="settings-label">Courier offline alerts</span><span
+                    class="settings-help">Notify when an active courier disconnects.</span></span><input class="toggle"
+                  type="checkbox" checked aria-label="Courier offline alerts" /></label>
+            </div>
+            <div class="settings-panel">
+              <div class="settings-panel-head">
+                <div class="settings-panel-title">Operating zones</div>
+                <div class="settings-panel-sub">Zones visible to this operations desk.</div>
+              </div>
+              <div class="zone-list"><label class="zone-option active"><span>Central Grid</span><input type="checkbox"
+                    checked aria-label="Central Grid" /></label><label class="zone-option active"><span>North
+                    District</span><input type="checkbox" checked aria-label="North District" /></label><label
+                  class="zone-option"><span>East District</span><input type="checkbox"
+                    aria-label="East District" /></label></div>
+            </div>
+          </div>
+          <div class="settings-panel">
+            <div class="settings-panel-head">
+              <div class="settings-panel-title">SLA thresholds</div>
+              <div class="settings-panel-sub">Used to calculate warnings and delayed delivery signals.</div>
+            </div>
+            <div class="threshold-list">
+              <div class="threshold-row"><span><span class="settings-label">Pickup</span><span
+                    class="settings-help">Maximum merchant handoff time.</span></span><span
+                  class="threshold-control"><input id="pickupThreshold" type="number" value="15" min="1" max="120"
+                    aria-label="Pickup SLA threshold" /><span>min</span></span></div>
+              <div class="threshold-row"><span><span class="settings-label">Delivery</span><span
+                    class="settings-help">Maximum end-to-end delivery time.</span></span><span
+                  class="threshold-control"><input id="deliveryThreshold" type="number" value="45" min="1" max="180"
+                    aria-label="Delivery SLA threshold" /><span>min</span></span></div>
+            </div>
+          </div>
+          <div class="settings-note">Changes apply to the Central Grid dispatch workspace. Notification preferences are
+            local to this demo.</div>
+        </section>
+
+      </div>
+    </div>
+  </div>
+
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+  <script>
+    // ================= live clock =================
+    function tick() {
+      const now = new Date();
+      const el = document.getElementById('clock');
+      if (el) el.textContent = now.toLocaleTimeString('en-GB');
+    }
+    tick(); setInterval(tick, 1000);
+
+    // ================= toast =================
+    const toastEl = document.getElementById('toast');
+    function showToast(message) {
+      toastEl.textContent = message;
+      toastEl.classList.add('show');
+      clearTimeout(toastEl._t);
+      toastEl._t = setTimeout(() => toastEl.classList.remove('show'), 3200);
+    }
+
+    // ================= workspace navigation + courier profiles =================
+    const operationsSections = [
+      document.getElementById('opsKpis'),
+      document.getElementById('opsContent'),
+      document.getElementById('detail-panel')
+    ];
+    const courierView = document.getElementById('courierView');
+    const deliveryView = document.getElementById('deliveryView');
+    const merchantView = document.getElementById('merchantView');
+    const reportsView = document.getElementById('reportsView');
+    const settingsView = document.getElementById('settingsView');
+    const topbarTitle = document.getElementById('topbarTitle');
+
+    function setWorkspace(view) {
+      const courierActive = view === 'couriers';
+      const deliveryActive = view === 'deliveries';
+      const merchantActive = view === 'merchants';
+      const reportsActive = view === 'reports';
+      const settingsActive = view === 'settings';
+      operationsSections.forEach(section => section.style.display = courierActive || deliveryActive || merchantActive || reportsActive || settingsActive ? 'none' : '');
+      courierView.classList.toggle('visible', courierActive);
+      deliveryView.classList.toggle('visible', deliveryActive);
+      merchantView.classList.toggle('visible', merchantActive);
+      reportsView.classList.toggle('visible', reportsActive);
+      settingsView.classList.toggle('visible', settingsActive);
+      document.getElementById('operationsNav').classList.toggle('active', !courierActive && !deliveryActive && !merchantActive && !reportsActive && !settingsActive);
+      document.getElementById('couriersNav').classList.toggle('active', courierActive);
+      document.getElementById('deliveriesNav').classList.toggle('active', deliveryActive);
+      document.getElementById('merchantsNav').classList.toggle('active', merchantActive);
+      document.getElementById('reportsNav').classList.toggle('active', reportsActive);
+      document.getElementById('settingsNav').classList.toggle('active', settingsActive);
+      topbarTitle.textContent = courierActive ? 'Courier Fleet' : deliveryActive ? 'Deliveries' : merchantActive ? 'Merchants' : reportsActive ? 'Performance Overview' : settingsActive ? 'Operations Settings' : 'Operations Center';
+    }
+
+    document.getElementById('operationsNav').addEventListener('click', () => setWorkspace('operations'));
+    document.getElementById('couriersNav').addEventListener('click', () => setWorkspace('couriers'));
+    document.getElementById('deliveriesNav').addEventListener('click', () => setWorkspace('deliveries'));
+    document.getElementById('merchantsNav').addEventListener('click', () => setWorkspace('merchants'));
+    document.getElementById('reportsNav').addEventListener('click', () => setWorkspace('reports'));
+    document.getElementById('settingsNav').addEventListener('click', () => setWorkspace('settings'));
+
+    const courierDeliveryMap = {
+      'Arjun Kumar': 'DSP-4821',
+      'Maya Patel': 'DSP-4796',
+      'Omar Farouk': 'DSP-4779',
+      'Nina Petrova': 'DSP-4765'
+    };
+
+    function openDelivery(orderId) {
+      const row = Array.from(document.querySelectorAll('.delivery-row')).find(item => item.dataset.id === orderId);
+      if (!row) return;
+      setWorkspace('operations');
+      selectDelivery(row);
+      document.getElementById('detail-panel').scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+
+    function openCourierProfile(name) {
+      const card = Array.from(document.querySelectorAll('.courier-card')).find(item => item.dataset.courier === name);
+      if (!card) return;
+      setWorkspace('couriers');
+      selectCourier(card);
+    }
+
+    function openMerchantProfile(name) {
+      const card = Array.from(document.querySelectorAll('.merchant-card')).find(item => item.dataset.merchant === name);
+      if (!card) return;
+      setWorkspace('merchants');
+      selectMerchant(card);
+    }
+
+    function initials(name) {
+      return name.split(' ').map(part => part[0]).join('').slice(0, 2).toUpperCase();
+    }
+
+    function selectCourier(card) {
+      document.querySelectorAll('.courier-card').forEach(item => item.classList.remove('selected'));
+      card.classList.add('selected');
+      const data = card.dataset;
+      document.getElementById('profileAvatar').textContent = initials(data.courier);
+      document.getElementById('profileName').textContent = data.courier;
+      document.getElementById('profileRole').textContent = data.status + ' · ' + data.zone;
+      document.getElementById('profileLocation').textContent = '● Current location · ' + data.location;
+      document.getElementById('profileVehicle').textContent = data.vehicle;
+      document.getElementById('profileRating').textContent = data.rating + ' ★';
+      document.getElementById('profileDeliveries').textContent = data.deliveries;
+      document.getElementById('profileOntime').textContent = data.ontime;
+      document.getElementById('profileContact').dataset.courier = data.courier;
+      document.getElementById('profileAssign').dataset.courier = data.courier;
+    }
+
+    document.querySelectorAll('.courier-card').forEach(card => {
+      card.addEventListener('click', () => selectCourier(card));
+      card.addEventListener('keydown', event => {
+        if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); selectCourier(card); }
+      });
+    });
+
+    document.getElementById('courierSearch').addEventListener('input', event => {
+      const term = event.target.value.trim().toLowerCase();
+      let visible = 0;
+      document.querySelectorAll('.courier-card').forEach(card => {
+        const matches = (card.dataset.courier + ' ' + card.dataset.vehicle + ' ' + card.dataset.location).toLowerCase().includes(term);
+        card.style.display = matches ? 'grid' : 'none';
+        if (matches) visible++;
+      });
+      const selected = document.querySelector('.courier-card.selected');
+      if (selected && selected.style.display === 'none') {
+        const firstVisible = Array.from(document.querySelectorAll('.courier-card')).find(card => card.style.display !== 'none');
+        if (firstVisible) selectCourier(firstVisible);
+      }
+      document.getElementById('courierCount').textContent = visible + ' visible';
+    });
+
+    document.getElementById('profileContact').addEventListener('click', event => {
+      showToast('Calling ' + event.currentTarget.dataset.courier + '...');
+    });
+    document.getElementById('profileAssign').addEventListener('click', event => {
+      const courier = event.currentTarget.dataset.courier;
+      openDelivery(courierDeliveryMap[courier]);
+    });
+
+    document.getElementById('dp-courier-link').addEventListener('click', () => {
+      const courier = document.getElementById('dp-courier-link').textContent;
+      openCourierProfile(courierDeliveryMap[courier] ? courier : courier === 'Alex Rivera' ? 'Arjun Kumar' : courier);
+    });
+
+    // ================= merchant performance =================
+    function selectMerchant(card) {
+      document.querySelectorAll('.merchant-card').forEach(item => item.classList.remove('selected'));
+      card.classList.add('selected');
+      const data = card.dataset;
+      document.getElementById('merchantAvatar').textContent = initials(data.merchant);
+      document.getElementById('merchantDetailName').textContent = data.merchant;
+      document.getElementById('merchantDetailSub').textContent = data.type;
+      document.getElementById('merchantPrep').textContent = data.prep;
+      document.getElementById('merchantOrders').textContent = data.orders;
+      document.getElementById('merchantCancel').textContent = data.cancel;
+      document.getElementById('merchantDelayed').textContent = data.delayed;
+      document.getElementById('merchantSla').textContent = data.sla;
+      document.getElementById('merchantSlaBar').style.width = data.sla;
+      document.getElementById('merchantOntime').textContent = data.ontime;
+      document.getElementById('merchantOntimeBar').style.width = data.ontime;
+      document.getElementById('merchantOrdersAction').dataset.merchant = data.merchant;
+    }
+
+    document.querySelectorAll('.merchant-card').forEach(card => {
+      card.addEventListener('click', () => selectMerchant(card));
+      card.addEventListener('keydown', event => {
+        if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); selectMerchant(card); }
+      });
+    });
+    document.getElementById('merchantOrdersAction').addEventListener('click', event => {
+      setWorkspace('deliveries');
+      const merchant = event.currentTarget.dataset.merchant.toLowerCase().replace(' kitchen', '');
+      document.getElementById('deliverySearch').value = merchant;
+      deliverySearch = merchant;
+      applyDeliveryFilters();
+      showToast('Showing active orders for ' + event.currentTarget.dataset.merchant);
+    });
+    document.getElementById('merchantReportsAction').addEventListener('click', () => {
+      setWorkspace('reports');
+      showToast('Opening merchant performance context in Reports');
+    });
+
+    // ================= delivery order management =================
+    let deliveryFilter = 'all';
+    let deliverySearch = '';
+    const deliveryTableRows = Array.from(document.querySelectorAll('.delivery-table-row'));
+
+    function deliveryFilterMatches(status) {
+      if (deliveryFilter === 'all') return true;
+      if (deliveryFilter === 'st-assigned') return ['st-assigned', 'st-pickup'].includes(status);
+      if (deliveryFilter === 'st-intransit') return ['st-intransit', 'st-arriving'].includes(status);
+      return status === deliveryFilter;
+    }
+
+    function applyDeliveryFilters() {
+      let visible = 0;
+      deliveryTableRows.forEach(row => {
+        const text = row.textContent.toLowerCase();
+        const matches = deliveryFilterMatches(row.dataset.status) && (!deliverySearch || text.includes(deliverySearch));
+        row.style.display = matches ? 'table-row' : 'none';
+        if (matches) visible++;
+      });
+      document.getElementById('deliveryCount').textContent = visible + (visible === 1 ? ' order' : ' orders');
+      document.getElementById('deliveryEmpty').style.display = visible ? 'none' : 'block';
+    }
+
+    document.querySelectorAll('.delivery-filter').forEach(filter => {
+      filter.addEventListener('click', () => {
+        deliveryFilter = filter.dataset.deliveryFilter;
+        document.querySelectorAll('.delivery-filter').forEach(item => item.classList.toggle('active', item === filter));
+        applyDeliveryFilters();
+      });
+    });
+    document.getElementById('deliverySearch').addEventListener('input', event => {
+      deliverySearch = event.target.value.trim().toLowerCase();
+      applyDeliveryFilters();
+    });
+    deliveryTableRows.forEach(tableRow => {
+      tableRow.addEventListener('click', () => {
+        const sourceRow = rows.find(row => row.dataset.id === tableRow.dataset.orderId);
+        if (!sourceRow) return;
+        deliveryTableRows.forEach(item => item.classList.remove('selected'));
+        tableRow.classList.add('selected');
+        setWorkspace('operations');
+        selectDelivery(sourceRow);
+        document.getElementById('detail-panel').scrollIntoView({ behavior: 'smooth', block: 'start' });
+      });
+    });
+    document.querySelectorAll('.merchant-link').forEach(link => {
+      link.addEventListener('click', event => {
+        event.stopPropagation();
+        openMerchantProfile(event.currentTarget.dataset.merchantLink);
+      });
+    });
+    applyDeliveryFilters();
+
+    // ================= tab switching (Active / Alerts) =================
+    function switchTab(tab) {
+      document.querySelectorAll('.tab-btn').forEach(b => b.classList.toggle('active', b.dataset.tab === tab));
+      document.getElementById('pane-active').style.display = tab === 'active' ? 'block' : 'none';
+      document.getElementById('pane-alerts').style.display = tab === 'alerts' ? 'block' : 'none';
+      if (tab === 'alerts') {
+        document.getElementById('bellBadge').style.display = 'none';
+      }
+    }
+    document.querySelectorAll('.tab-btn').forEach(btn => {
+      btn.addEventListener('click', () => switchTab(btn.dataset.tab));
+    });
+    document.getElementById('bellBtn').addEventListener('click', () => switchTab('alerts'));
+
+    // ================= filtering + search =================
+    let currentFilter = 'all';
+    let searchTerm = '';
+    const rows = Array.from(document.querySelectorAll('.delivery-row'));
+
+    function categoryOf(row) {
+      const s = row.dataset.status;
+      if (s === 'st-delayed') return 'delayed';
+      if (['st-pending', 'st-preparing', 'st-ready'].includes(s)) return 'awaiting';
+      if (['st-assigned', 'st-pickup', 'st-intransit', 'st-arriving'].includes(s)) return 'transit';
+      return 'other';
+    }
+
+    function applyFilters() {
+      let visibleCount = 0;
+      let firstVisible = null;
+      rows.forEach(row => {
+        const matchesCategory = currentFilter === 'all' || categoryOf(row) === currentFilter;
+        const haystack = (row.dataset.id + ' ' + row.dataset.merchant + ' ' + row.dataset.customer + ' ' + row.dataset.courier).toLowerCase();
+        const matchesSearch = searchTerm === '' || haystack.includes(searchTerm);
+        const visible = matchesCategory && matchesSearch;
+        row.style.display = visible ? 'flex' : 'none';
+        if (visible) { visibleCount++; if (!firstVisible) firstVisible = row; }
+      });
+
+      document.getElementById('activeCount').textContent = visibleCount;
+
+      const emptyState = document.getElementById('emptyState');
+      const emptyTitle = document.getElementById('emptyTitle');
+      const emptySub = document.getElementById('emptySub');
+      if (visibleCount === 0) {
+        emptyState.style.display = 'flex';
+        if (currentFilter === 'completed') {
+          emptyTitle.textContent = 'Completed orders are archived';
+          emptySub.textContent = '128 deliveries finished today — see Reports for full history.';
+        } else if (searchTerm) {
+          emptyTitle.textContent = 'No matches for "' + searchTerm + '"';
+          emptySub.textContent = 'Check the spelling, or clear the filter above.';
+        } else {
+          emptyTitle.textContent = 'Nothing in this state right now';
+          emptySub.textContent = 'This list updates live as orders move through the pipeline.';
+        }
+      } else {
+        emptyState.style.display = 'none';
+      }
+
+      // sync chip + kpi-card active states
+      document.querySelectorAll('.chip').forEach(c => c.classList.toggle('on', c.dataset.filter === currentFilter));
+      document.querySelectorAll('.kpi-card').forEach(k => k.classList.toggle('filter-active', k.dataset.filter === currentFilter));
+
+      // keep the detail panel + map in sync with what's actually visible
+      const selected = document.querySelector('.delivery-row.selected');
+      if (selected && selected.style.display === 'none') {
+        if (firstVisible) selectDelivery(firstVisible);
+        else clearSelection();
+      }
+      updateMapHighlight();
+    }
+
+    function setFilter(filter) {
+      currentFilter = filter;
+      switchTab('active');
+      applyFilters();
+    }
+
+    document.querySelectorAll('.chip').forEach(chip => {
+      chip.addEventListener('click', () => setFilter(chip.dataset.filter));
+    });
+    document.querySelectorAll('.kpi-card').forEach(card => {
+      card.addEventListener('click', () => setFilter(card.dataset.filter));
+      card.addEventListener('keydown', e => {
+        if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setFilter(card.dataset.filter); }
+      });
+    });
+
+    const searchInput = document.getElementById('searchInput');
+    searchInput.addEventListener('input', e => {
+      searchTerm = e.target.value.trim().toLowerCase();
+      applyFilters();
+    });
+    searchInput.addEventListener('keydown', e => {
+      if (e.key === 'Escape') { searchInput.value = ''; searchTerm = ''; applyFilters(); searchInput.blur(); }
+    });
+
+    // ================= map pan / zoom =================
+    const viewport = document.getElementById('mapViewport');
+    const CENTER = { x: 450, y: 320 };
+    let zoomLevel = 1;
+    let focusPoint = { ...CENTER };
+
+    function renderMapView() {
+      const tx = CENTER.x - focusPoint.x * zoomLevel;
+      const ty = CENTER.y - focusPoint.y * zoomLevel;
+      viewport.setAttribute('transform', 'translate(' + tx + ',' + ty + ') scale(' + zoomLevel + ')');
+      document.getElementById('zoomIn').classList.toggle('disabled', zoomLevel >= 2.6);
+      document.getElementById('zoomOut').classList.toggle('disabled', zoomLevel <= 1);
+    }
+    function setMapView(scale, x, y) {
+      zoomLevel = Math.max(1, Math.min(2.6, scale));
+      focusPoint = zoomLevel <= 1 ? { ...CENTER } : { x, y };
+      renderMapView();
+    }
+    document.getElementById('zoomIn').addEventListener('click', () => setMapView(zoomLevel + 0.4, focusPoint.x, focusPoint.y));
+    document.getElementById('zoomOut').addEventListener('click', () => setMapView(zoomLevel - 0.4, focusPoint.x, focusPoint.y));
+    renderMapView();
+
+    function updateMapHighlight() {
+      const selected = document.querySelector('.delivery-row.selected');
+      const selectedId = selected ? selected.dataset.id : null;
+      document.querySelectorAll('.marker-group, .route-line').forEach(el => {
+        const id = el.dataset.id || el.dataset.route;
+        let dim = false;
+        if (selectedId) {
+          dim = id !== selectedId;
+        } else if (currentFilter !== 'all') {
+          const row = rows.find(r => r.dataset.id === id);
+          dim = !(row && categoryOf(row) === currentFilter);
+        }
+        el.classList.toggle('map-dim', dim);
+      });
+    }
+
+    // ================= delivery selection =================
+    const statusClasses = ['st-pending', 'st-preparing', 'st-ready', 'st-assigned', 'st-pickup', 'st-intransit', 'st-arriving', 'st-delivered', 'st-delayed'];
+
+    function clearSelection() {
+      rows.forEach(r => r.classList.remove('selected'));
+      document.getElementById('dp-id').textContent = '—';
+      document.getElementById('dp-route').textContent = 'No delivery selected';
+      document.getElementById('dp-courier').textContent = '—';
+      document.getElementById('dp-courier-link').textContent = '—';
+      document.getElementById('dp-eta').textContent = '—';
+      document.getElementById('dp-distance').textContent = '—';
+      document.getElementById('dp-status-text').textContent = '—';
+      document.querySelectorAll('#dp-timeline .tl-step').forEach(s => s.classList.remove('done', 'current'));
+      setMapView(1, CENTER.x, CENTER.y);
+      updateMapHighlight();
+    }
+
+    function selectDelivery(row) {
+      rows.forEach(r => r.classList.remove('selected'));
+      row.classList.add('selected');
+
+      const id = row.dataset.id;
+      document.getElementById('dp-id').textContent = id;
+      document.getElementById('dp-route').innerHTML = row.dataset.merchant + ' <span class="arrow">→</span> ' + row.dataset.customer;
+      document.getElementById('dp-courier').textContent = row.dataset.courier;
+      document.getElementById('dp-courier-link').textContent = row.dataset.courier;
+      document.getElementById('dp-eta').textContent = row.dataset.eta;
+      document.getElementById('dp-distance').textContent = row.dataset.distance;
+      document.getElementById('dp-rating').textContent = row.dataset.rating || '4.8';
+      document.getElementById('dp-sla').textContent = row.dataset.sla || 'Pickup within operational target';
+      document.getElementById('dp-last-event').textContent = row.dataset.id === 'DSP-4788' ? 'Last update 09:15' : 'Live status';
+      document.getElementById('dp-status-text').textContent = row.dataset.statuslabel;
+      document.getElementById('dp-action-text').textContent = row.dataset.action;
+
+      const pill = document.getElementById('dp-status-pill');
+      pill.classList.remove(...statusClasses);
+      pill.classList.add(row.dataset.status);
+
+      const step = parseInt(row.dataset.step, 10);
+      document.querySelectorAll('#dp-timeline .tl-step').forEach(s => {
+        const n = parseInt(s.dataset.step, 10);
+        s.classList.remove('done', 'current');
+        if (n < step) s.classList.add('done');
+        if (n === step) s.classList.add('current');
+      });
+
+      // pan/zoom the map to this delivery if it has a live marker, otherwise reset the view
+      if (row.dataset.mapx) {
+        setMapView(1.7, parseFloat(row.dataset.mapx), parseFloat(row.dataset.mapy));
+      } else {
+        setMapView(1, CENTER.x, CENTER.y);
+      }
+      updateMapHighlight();
+
+      // scroll the row into view within the list (useful when selected via the map)
+      row.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+    }
+
+    rows.forEach(row => {
+      row.setAttribute('tabindex', '0');
+      row.setAttribute('role', 'button');
+      row.addEventListener('click', () => selectDelivery(row));
+      row.addEventListener('keydown', e => {
+        if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); selectDelivery(row); }
+      });
+    });
+
+    // clicking a marker on the map selects its delivery in the list
+    document.querySelectorAll('.marker-group[data-id]').forEach(marker => {
+      marker.addEventListener('click', () => {
+        const row = rows.find(r => r.dataset.id === marker.dataset.id);
+        if (row) selectDelivery(row);
+      });
+    });
+
+    // ================= alerts feed =================
+    function addAlert(iconType, iconSvg, text) {
+      const pane = document.getElementById('pane-alerts');
+      const row = document.createElement('div');
+      row.className = 'alert-row new';
+      row.innerHTML = '<div class="alert-ico ' + iconType + '"><svg class="icon" viewBox="0 0 24 24" style="width:15px;height:15px">' + iconSvg + '</svg></div>' +
+        '<div><div class="alert-text">' + text + '</div><div class="alert-time">Just now</div></div>';
+      pane.prepend(row);
+      const badge = document.querySelector('.tab-btn[data-tab="alerts"] .pill-count');
+      badge.textContent = parseInt(badge.textContent, 10) + 1;
+      if (document.querySelector('.tab-btn[data-tab="alerts"]').classList.contains('active') === false) {
+        document.getElementById('bellBadge').style.display = 'block';
+      }
+    }
+
+    // ================= delayed delivery recovery scenario =================
+    const recovery = { id: 'DSP-4779', phase: 0 };
+    const alertIcons = {
+      warning: '<path d="M12 9v4M12 17h.01"/><path d="M10.3 3.9L2.6 18a1.5 1.5 0 001.3 2.2h16.2a1.5 1.5 0 001.3-2.2L13.7 3.9a1.5 1.5 0 00-2.6 0z"/>',
+      courier: '<circle cx="12" cy="7" r="3"/><path d="M5 21c0-4 3-6.5 7-6.5s7 2.5 7 6.5"/>',
+      check: '<path d="M5 12l4 4L19 6"/>'
+    };
+
+    function updateKpisForRecovery(recovered) {
+      document.getElementById('kpi-delayed').textContent = recovered ? '2' : '3';
+      document.getElementById('kpi-transit').textContent = recovered ? '20' : '19';
+    }
+
+    function updateMapForRecovery(recovered) {
+      const marker = document.querySelector('.marker-group[data-id="DSP-4779"]');
+      const route = document.querySelector('.route-line[data-route="DSP-4779"]');
+      if (!marker || !route) return;
+      const color = recovered ? 'var(--teal)' : 'var(--bad)';
+      marker.querySelectorAll('circle').forEach(circle => {
+        circle.setAttribute('stroke', circle.classList.contains('marker-pulse') ? 'none' : color);
+        if (circle.classList.contains('marker-pulse')) circle.setAttribute('fill', color);
+      });
+      const arrow = marker.querySelector('path:last-child');
+      if (arrow) arrow.setAttribute('fill', color);
+      route.setAttribute('stroke', color);
+      route.setAttribute('stroke-dasharray', recovered ? '6 4' : '3 5');
+    }
+
+    function syncRecoveryRow(row, values) {
+      Object.entries(values).forEach(([key, value]) => row.dataset[key] = value);
+      row.querySelector('.d-meta').textContent = 'Courier: ' + row.dataset.courier;
+      const pill = row.querySelector('.status-pill');
+      pill.className = 'status-pill ' + row.dataset.status;
+      pill.innerHTML = '<span class="status-dot"></span>' + row.dataset.statuslabel;
+      row.querySelector('.d-eta').textContent = row.dataset.eta;
+    }
+
+    function advanceRecovery(row) {
+      recovery.phase += 1;
+      if (recovery.phase === 1) {
+        document.getElementById('dp-action-text').textContent = 'Contact Courier';
+        showToast('Delay investigated: Omar is stopped at Riverside crossing');
+        addAlert('warn', alertIcons.warning, '<strong>DSP-4779 investigated</strong> - route blockage confirmed near Riverside crossing.');
+        setMapView(2, parseFloat(row.dataset.mapx), parseFloat(row.dataset.mapy));
+      } else if (recovery.phase === 2) {
+        document.getElementById('dp-action-text').textContent = 'Reassign Courier';
+        showToast('Omar Farouk reached - requesting a handoff');
+        addAlert('info', alertIcons.courier, '<strong>Omar Farouk contacted</strong> - handoff requested for DSP-4779.');
+      } else if (recovery.phase === 3) {
+        syncRecoveryRow(row, { courier: 'Nina Petrova', status: 'st-intransit', statuslabel: 'Reassigned', eta: '14 min', distance: '3.2 km', step: '6', action: 'Mark Recovered' });
+        updateKpisForRecovery(true);
+        updateMapForRecovery(true);
+        document.getElementById('dp-action-text').textContent = 'Mark Recovered';
+        selectDelivery(row);
+        showToast('Nina Petrova accepted the handoff');
+        addAlert('info', alertIcons.courier, '<strong>DSP-4779 reassigned</strong> - Nina Petrova is moving to the pickup point.');
+      } else {
+        syncRecoveryRow(row, { status: 'st-arriving', statuslabel: 'Arriving', eta: '3 min', distance: '0.4 km', step: '7', action: 'Monitor Recovery' });
+        document.getElementById('dp-action-text').textContent = 'Monitor Recovery';
+        selectDelivery(row);
+        showToast('DSP-4779 is back within recovery target');
+        addAlert('info', alertIcons.check, '<strong>DSP-4779 recovering</strong> - Nina Petrova is 3 min from Wei Lin.');
+      }
+    }
+
+    // ================= detail panel actions =================
+    document.getElementById('dp-action').addEventListener('click', () => {
+      const id = document.getElementById('dp-id').textContent;
+      if (id === '—') return;
+      const action = document.getElementById('dp-action-text').textContent;
+      const courier = document.getElementById('dp-courier').textContent;
+      const selected = document.querySelector('.delivery-row.selected');
+
+      if (selected && selected.dataset.scenario === 'recovery') {
+        advanceRecovery(selected);
+      } else if (action === 'Escalate Delay') {
+        showToast('Escalated ' + id + ' to the duty manager');
+        addAlert('bad', '<path d="M12 9v4M12 17h.01"/><path d="M10.3 3.9L2.6 18a1.5 1.5 0 001.3 2.2h16.2a1.5 1.5 0 001.3-2.2L13.7 3.9a1.5 1.5 0 00-2.6 0z"/>',
+          '<strong>' + id + ' escalated</strong> — duty manager notified, following up with ' + courier + '.');
+      } else if (action === 'Reassign Courier') {
+        showToast('Reassignment requested for ' + id);
+      } else if (action === 'Assign Courier') {
+        showToast('Broadcasting ' + id + ' to nearby couriers');
+      } else if (action === 'Contact Courier') {
+        showToast('Calling ' + courier + '…');
+      } else {
+        showToast('Opening order details for ' + id);
+      }
+    });
+
+    document.getElementById('btnViewTrip').addEventListener('click', () => {
+      const selected = document.querySelector('.delivery-row.selected');
+      if (!selected) return;
+      showToast('Merchant contact opened for ' + selected.dataset.merchant);
+      addAlert('info', alertIcons.courier, '<strong>' + selected.dataset.merchant + ' contacted</strong> — prep status requested for ' + selected.dataset.id + '.');
+    });
+    document.getElementById('btnEscalate').addEventListener('click', () => {
+      const selected = document.querySelector('.delivery-row.selected');
+      if (!selected) return;
+      showToast('Escalated ' + selected.dataset.id + ' to the duty manager');
+      addAlert('bad', alertIcons.warning, '<strong>' + selected.dataset.id + ' escalated</strong> — duty manager notified for follow-up.');
+    });
+    // ================= initial sync =================
+    applyFilters();
+  </script>
+</body>
+
+</html>
